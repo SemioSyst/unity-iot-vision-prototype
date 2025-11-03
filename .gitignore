@@ -1,0 +1,67 @@
+# ---- Unity ----
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+UserSettings/
+*.csproj
+*.sln
+*.suo
+*.user
+*.unityproj
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.vs/
+
+# Visual Studio 缓存
+*.userprefs
+
+# Unity 自动生成
+unity/.gradle/
+unity/.idea/
+unity/.vs/
+unity/*/Plugins/Editor/JetBrains* # 如有 Rider
+
+# 建议保留 .meta（Unity 资源引用靠它）
+# 不要忽略 Assets/**.meta
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+.env.*
+dist/
+build/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ---- 通用 ----
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+
+# Unity 构建和缓存目录
+[Uu]ser[Ss]ettings/
+[Ll]ibrary/
+[Tt]emp/
+[Ll]ogs/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Mm]emoryCaptures/

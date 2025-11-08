@@ -9,6 +9,7 @@ USE_GAUSSIAN = True    # 默认开启高斯模糊降噪
 cap = cv2.VideoCapture(CAM_INDEX)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_W)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
+cap.set(cv2.CAP_PROP_FPS, 60)
 
 if not cap.isOpened():
     raise RuntimeError("无法打开摄像头：请检查连接、索引（CAM_INDEX）或被占用情况")

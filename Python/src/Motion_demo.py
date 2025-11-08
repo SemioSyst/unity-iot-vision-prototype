@@ -8,7 +8,7 @@ FRAME_W, FRAME_H = 1280, 720
 USE_MOG2 = True            # True=使用MOG2背景建模；False=简单帧差
 HISTORY = 300              # MOG2历史帧数
 VAR_THRESHOLD = 16         # MOG2灵敏度（阈值）
-DETECT_SHADOWS = True      # MOG2是否启用阴影检测
+DETECT_SHADOWS = False      # MOG2是否启用阴影检测
 MIN_AREA = 800             # 连通域最小面积（像素）
 SMOOTH_K = 5               # 高斯核大小（奇数）
 DILATE_ITER = 2            # 膨胀迭代次数（连通更好）
@@ -27,7 +27,7 @@ if not cap.isOpened():
 mog2 = cv2.createBackgroundSubtractorMOG2(history=HISTORY,
                                           varThreshold=VAR_THRESHOLD,
                                           detectShadows=DETECT_SHADOWS)
-cv2.namedWindow("Motion", cv2.WINDOW_NORMAL)
+cv2.namedWindow("Motion", cv2.WINDOW_NORMAL) # 创建窗口
 cv2.resizeWindow("Motion", 960, 540)
 cv2.createTrackbar("min_area", "Motion", MIN_AREA, 20000, lambda x: None)
 cv2.createTrackbar("blur(odd)", "Motion", SMOOTH_K, 21, lambda x: None)
@@ -42,12 +42,12 @@ prev_gray = None
 trail = deque(maxlen=TRAIL_LEN)
 
 while True:
-    ok, frame = cap.read()
+    ok, frame = cap.read() # 读取一帧
     if not ok:
         print("⚠️ 读取失败，可能摄像头被占用。")
         break
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # 将当前帧转为灰度
 
     # UI参数
     MIN_AREA = max(0, cv2.getTrackbarPos("min_area", "Motion"))
@@ -60,6 +60,7 @@ while True:
 
     # 选择方法
     if USE_MOG2:
+        # MOG2背景建模
         VAR_THRESHOLD = cv2.getTrackbarPos("varT", "Motion") or 1
         HISTORY = max(1, cv2.getTrackbarPos("history", "Motion"))
         mog2.setVarThreshold(VAR_THRESHOLD)
@@ -68,14 +69,16 @@ while True:
         fg = mog2.apply(gray)                      # 前景掩码（含阴影=127）
         _, fg = cv2.threshold(fg, 200, 255, cv2.THRESH_BINARY)  # 去掉阴影
     else:
+        # 帧差法
         if prev_gray is None:
+            # 若无前一帧，初始化并跳过
             prev_gray = gray
             cv2.imshow("Motion", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             continue
-        diff = cv2.absdiff(gray, prev_gray)
-        _, fg = cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)
+        diff = cv2.absdiff(gray, prev_gray) # 计算帧差绝对值
+        _, fg = cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY) # 通过阈值二值化
         prev_gray = gray
 
     # 形态学：去噪并连通
@@ -100,10 +103,10 @@ while True:
             cv2.line(frame, trail[i-1], trail[i], (255, 100, 0), 2)
 
     # 可视化拼接
-    vis_mask = cv2.cvtColor(cv2.resize(fg, (640, 360)), cv2.COLOR_GRAY2BGR)
-    vis_frame = cv2.resize(frame, (640, 360))
-    vis = cv2.hconcat([vis_frame, vis_mask])
-    cv2.imshow("Motion - 按 'q' 退出, 'm' 切换算法，'r' 重置背景，'s' 保存", vis)
+    vis_mask = cv2.cvtColor(cv2.resize(fg, (640, 360)), cv2.COLOR_GRAY2BGR) # 掩码可视化
+    vis_frame = cv2.resize(frame, (640, 360)) # 原图缩小
+    vis = cv2.hconcat([vis_frame, vis_mask]) # 拼接显示
+    cv2.imshow("Motion - press 'q' to quit, 'm' to switch algorithm, 'r' to reset background, 's' to save", vis) # 刷新显示结果
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):

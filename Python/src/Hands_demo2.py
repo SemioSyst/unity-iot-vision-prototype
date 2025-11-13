@@ -5,6 +5,7 @@ import mediapipe as mp
 CAM_INDEX = 0
 W, H = 1280, 720
 TARGET_FPS = 30            # 仅作请求，是否成功需测量
+INFER_W, INFER_H = 640, 360   # 推理分辨率
 
 # ---------- MediaPipe config ----------
 mp_hands = mp.solutions.hands
@@ -57,6 +58,7 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,  W)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
     cap.set(cv2.CAP_PROP_FPS, TARGET_FPS)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))  # ★ MJPG
 
     hands = mp_hands.Hands(
         model_complexity=MODEL_COMPLEXITY,
@@ -68,7 +70,7 @@ def main():
     cv2.namedWindow("MediaPipe Hands", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("MediaPipe Hands", 960, 540)
 
-    t0, frames = time.time(), 0
+    t0, n = time.time(), 0
     print("✅ 运行中：q 退出，f 切换镜像，s 保存截图。")
 
     selfie = True # 是否水平镜像显示（更符合自拍视角）
@@ -83,22 +85,20 @@ def main():
             frame = cv2.flip(frame, 1)
 
         # MediaPipe 使用 RGB, OpenCV 使用 BGR
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # 转换颜色空间
+        small = cv2.resize(frame, (INFER_W, INFER_H)) # 缩小加速推理
+        rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB) # 转换颜色空间
         rgb.flags.writeable = False 
         results = hands.process(rgb)
         rgb.flags.writeable = True
 
         # 绘制关键点
         if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                # 通过 MediaPipe 自带的绘图样式绘制
-                mp_drawing.draw_landmarks(
-                    frame,
-                    hand_landmarks,
-                    mp_hands.HAND_CONNECTIONS,
-                    mp_styles.get_default_hand_landmarks_style(),
-                    mp_styles.get_default_hand_connections_style()
-                )
+            sx = W / float(INFER_W)
+            sy = H / float(INFER_H)
+            for lm in results.multi_hand_landmarks:
+                for p in lm.landmark:
+                    px, py = int(p.x * INFER_W * sx), int(p.y * INFER_H * sy)
+                    cv2.circle(frame, (px, py), 2, (0,255,255), -1)
 
             # 也可以把数据结构化（为接 Unity 做准备）
             h, w = frame.shape[:2] # 图像尺寸
@@ -107,16 +107,14 @@ def main():
 
         draw_handedness(frame, results) # 绘制左右手标注
 
-        # 计算 FPS（更可信的方式：测 60 帧时间）
-        frames += 1
-        dt = time.time() - t0
-        if dt >= 0.5:
-            fps = frames / dt
-            t0, frames = time.time(), 0
-        else:
-            fps = float('nan')
-        if fps == fps:  # 非 NaN
-            draw_fps(frame, fps)
+        # FPS 显示
+        n += 1
+        if n >= 60:
+            t1 = time.time()
+            fps = n / (t1 - t0)
+            t0, n = t1, 0
+            cv2.putText(frame, f"FPS {fps:.1f}", (12, 28),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
 
         cv2.imshow("MediaPipe Hands", frame)
         k = cv2.waitKey(1) & 0xFF

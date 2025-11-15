@@ -123,7 +123,7 @@ class WsBridge:
             asyncio.run(bridge.run_forever())
         """
         logger.info("启动 WebSocket 服务器 ws://%s:%d", self.host, self.port)
-        self._server = websockets.serve(self._handler, self.host, self.port)
+        self._server = websockets.serve(self._handler, self.host, self.port) # 建立服务器
 
         # 启动服务器
         await self._server
@@ -157,7 +157,7 @@ async def _demo() -> None:
             i += 1
             await asyncio.sleep(1.0)
 
-    # 启动服务器和心跳任务
+    # 启动服务器和心跳任务，使用 asyncio.gather 并行运行
     await asyncio.gather(
         bridge.run_forever(),
         heartbeat()

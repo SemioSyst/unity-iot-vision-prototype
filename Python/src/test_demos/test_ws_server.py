@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from tools.ws_bridge import WsBridge
+from Python.src.tools.ws_bridge import WsBridge
 
 
 async def main():

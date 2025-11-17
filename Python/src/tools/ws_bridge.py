@@ -94,23 +94,36 @@ class WsBridge:
         - 广播给当前所有已连接的客户端。
         """
         logger.info("发送循环启动")
-        while True:
-            text = await self.outgoing.get()
-            if not self._clients:
-                # 当前还没有客户端连接，丢弃或缓存视需求而定。
-                logger.debug("无客户端连接，丢弃消息: %s", text[:80])
-                continue
+        try:
+            while True:
+                text = await self.outgoing.get()
 
-            # 并发发送到所有客户端
-            to_remove = []
-            for ws in self._clients:
-                try:
-                    await ws.send(text)
-                except websockets.ConnectionClosed:
-                    logger.info("发送失败，连接已关闭，将移除客户端: %s", ws.remote_address)
-                    to_remove.append(ws)
-            for ws in to_remove:
-                self._clients.discard(ws)
+                if not self._clients:
+                    # 当前没有客户端，消息直接丢弃（或按需缓存）
+                    logger.debug("无客户端连接，丢弃消息: %s", text[:80])
+                    continue
+
+                to_remove = []
+
+                # 用一个快照/临时列表来遍历，避免遍历过程中修改 set
+                for ws in list(self._clients):
+                    try:
+                        await ws.send(text)
+                    except websockets.ConnectionClosed:
+                        logger.info(
+                            "发送失败，连接已关闭，将移除客户端: %s",
+                            ws.remote_address,
+                        )
+                        to_remove.append(ws)
+
+                # 统一删除已经断开的连接
+                for ws in to_remove:
+                    self._clients.discard(ws)
+
+        except asyncio.CancelledError:
+            # 程序退出时，run_forever 被取消，这里吃掉异常正常结束即可
+            logger.info("发送循环被取消，正常退出")
+            raise
 
     # ---------- 对外总入口 ----------
 

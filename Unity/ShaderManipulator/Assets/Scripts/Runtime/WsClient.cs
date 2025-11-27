@@ -34,6 +34,8 @@ public class WsClient : MonoBehaviour
     // 只在主线程访问的“当前最新一条消息”
     private string _latestJson;
 
+    private float _logTimer; // 测试用的计时器，用于控制日志打印频率
+
     /// <summary>
     /// 对外暴露一个只读属性，方便其它脚本查询连接状态。
     /// </summary>
@@ -45,6 +47,7 @@ public class WsClient : MonoBehaviour
         // 确保失焦时 Unity 也继续跑（比如 Python 在后台）
         Application.runInBackground = true;
 
+        // 初始化 WebSocket 和取消令牌
         _cts = new CancellationTokenSource();
         _ws = new ClientWebSocket();
 
@@ -83,13 +86,16 @@ public class WsClient : MonoBehaviour
     /// </summary>
     private async Task ReceiveLoopAsync(ClientWebSocket ws, CancellationToken ct)
     {
-        // 单次消息最大 64KB，够你 JSON 用了；不够可以调大。
+        // 单次消息最大 64KB；不够可以调大。
         var buffer = new byte[64 * 1024];
 
         while (!ct.IsCancellationRequested && ws.State == WebSocketState.Open)
         {
+            // 将接收缓冲区包装成 ArraySegment
+            // 这样可以避免每次都分配新数组               
             var segment = new ArraySegment<byte>(buffer);
 
+            // 申明接收结果变量和累计字节数
             WebSocketReceiveResult result;
             int totalBytes = 0;
 
@@ -99,8 +105,10 @@ public class WsClient : MonoBehaviour
                 using var ms = new System.IO.MemoryStream();
                 do
                 {
+                    // 接收一帧，放进缓冲区并返回result信息
                     result = await ws.ReceiveAsync(segment, ct);
 
+                    // 检查消息类型，若服务器请求关闭连接则响应
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
                         Debug.Log("[WsClient] 服务器请求关闭连接.");
@@ -109,18 +117,20 @@ public class WsClient : MonoBehaviour
                         return;
                     }
 
+                    // 把本帧数据写入内存流
                     ms.Write(buffer, 0, result.Count);
                     totalBytes += result.Count;
 
+                    // 简单检查消息大小，防止内存流爆炸
                     if (totalBytes > buffer.Length)
                     {
                         Debug.LogWarning("[WsClient] 收到的消息太大，可能被截断.");
                         break;
                     }
 
-                } while (!result.EndOfMessage);
+                } while (!result.EndOfMessage); // 若不是最后一帧则继续接收
 
-                // 转成字符串（UTF-8）
+                // 将内存流转换为字符串（假设是 UTF-8 编码）
                 string json = Encoding.UTF8.GetString(ms.ToArray());
 
                 // 放进队列，并做容量限制
@@ -145,9 +155,12 @@ public class WsClient : MonoBehaviour
     /// </summary>
     private void EnqueueMessage(string json)
     {
+        // 放入新消息
         _messageQueue.Enqueue(json);
 
         // 超出容量时丢弃旧消息，保证“最新为先，不积压”
+        // 空函数体循环用于反复尝试出队直到将超出的消息清理完
+        // 若队列长度未超出则不会进入循环
         while (_messageQueue.Count > maxBufferedMessages &&
                _messageQueue.TryDequeue(out _)) { }
     }
@@ -159,12 +172,21 @@ public class WsClient : MonoBehaviour
     private void Update()
     {
         // 从队列里把所有消息取出来，只留下最新的
+        // 每次 TryDequeue 都会移除队列头部元素，返回它并赋值给 json 变量
+        // 循环直到队列空为止，这样最后 json 变量里就是最新的一条消息
         while (_messageQueue.TryDequeue(out var json))
         {
             _latestJson = json;
         }
 
         // 这里先简单做个可视化测试：有新消息时每秒打一次日志之类的
+        _logTimer += Time.deltaTime;
+        // 每隔 0.5 秒打印一次最新消息的前 80 个字符
+        if (_logTimer > 0.5f && _latestJson != null)
+        {
+            Debug.Log($"[WsClient] 最新消息: {_latestJson.Substring(0, Mathf.Min(80, _latestJson.Length))}");
+            _logTimer = 0f;
+        }
         // 当前先不解析 JSON，等后面设计数据结构时再处理。
     }
 

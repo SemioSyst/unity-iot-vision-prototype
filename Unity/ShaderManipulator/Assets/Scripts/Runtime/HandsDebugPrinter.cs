@@ -46,7 +46,7 @@ namespace ShaderDuel.Debugging
 
                     Debug.Log(
                         $"[HandsDebugPrinter] hands={count}, " +
-                        $"primary={hand.handedness}, " +
+                        $"primary={hand.label}, " +
                         $"lm[{lmIndex}] => x={lm.x:F3}, y={lm.y:F3}, z={lm.z:F3}, " +
                         $"px={lm.px}, py={lm.py}"
                     );

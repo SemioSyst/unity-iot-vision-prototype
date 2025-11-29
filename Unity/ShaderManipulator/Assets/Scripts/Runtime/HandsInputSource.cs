@@ -102,7 +102,7 @@ namespace ShaderDuel.Core
             foreach (var hand in hands)
             {
                 if (hand == null) continue;
-                if (string.Equals(hand.handedness, "right", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(hand.label, "right", StringComparison.OrdinalIgnoreCase))
                 {
                     candidate = hand;
                     break;
@@ -115,7 +115,7 @@ namespace ShaderDuel.Core
                 foreach (var hand in hands)
                 {
                     if (hand == null) continue;
-                    if (string.Equals(hand.handedness, "left", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(hand.label, "left", StringComparison.OrdinalIgnoreCase))
                     {
                         candidate = hand;
                         break;
@@ -191,7 +191,7 @@ namespace ShaderDuel.Core
                 // 跳过空手数据
                 if (h == null) continue;
                 // 比较 handedness 字段，若是左手则获取数据并返回 true
-                if (string.Equals(h.handedness, "left", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(h.label, "left", StringComparison.OrdinalIgnoreCase))
                 {
                     hand = h;
                     return true;
@@ -216,7 +216,7 @@ namespace ShaderDuel.Core
                 // 跳过空手数据
                 if (h == null) continue;
                 // 比较 handedness 字段，若是右手则获取数据并返回 true
-                if (string.Equals(h.handedness, "right", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(h.label, "right", StringComparison.OrdinalIgnoreCase))
                 {
                     hand = h;
                     return true;

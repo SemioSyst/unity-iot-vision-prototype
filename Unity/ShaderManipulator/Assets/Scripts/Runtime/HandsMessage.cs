@@ -27,7 +27,9 @@ namespace ShaderDuel.Core
     [Serializable]
     public class HandData
     {
-        public string handedness;      // "left" / "right"
+        public int id;           // 手的唯一标识符
+        public string label;      // "left" / "right"
+        public float score;     // 置信度（0~1）
         public Landmark[] landmarks;   // 21 个关键点
     }
 
@@ -47,6 +49,9 @@ namespace ShaderDuel.Core
     [Serializable]
     public struct Landmark
     {
+        // 关键点索引（0~20）
+        public int i;
+
         // 归一化坐标（0~1，MediaPipe 原始输出）
         public float x;
         public float y;

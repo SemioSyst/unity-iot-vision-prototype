@@ -56,7 +56,7 @@ namespace ShaderDuel.Hands
                 }
             }
         }
-
+        //private float _logTimer; // 测试用的计时器，用于控制日志打印频率，非正式，正式debug工具请用 HandFeaturesDebugView
         private void Update()
         {
             if (_handsInput == null || !_handsInput.HasData)
@@ -64,6 +64,12 @@ namespace ShaderDuel.Hands
                 UpdateNoHands();
                 return;
             }
+
+            /*
+            _logTimer += Time.deltaTime;
+            if (_logTimer < 0.5f) return;
+            _logTimer = 0f;
+            */
 
             GlobalHandFeatures result = default;
 
@@ -82,6 +88,12 @@ namespace ShaderDuel.Hands
                     // 更新上一帧缓存为当前帧
                     _prevLeft = result.LeftHand;
                     _hasPrevLeft = true;
+
+                    //LogHand("Left", result.LeftHand, result.HasLeftHand);
+                }
+                else
+                {
+                   // Debug.LogWarning("[HandFeatureExtractor] 左手 landmarks 数据不足，无法计算特征。");
                 }
             }
             else
@@ -93,6 +105,7 @@ namespace ShaderDuel.Hands
                     _prevLeft.IsTracked = false;
                     result.LeftHand = _prevLeft;
                 }
+                //Debug.Log("[HandFeatureExtractor] 未检测到左手。");
             }
 
             // 右手
@@ -110,6 +123,12 @@ namespace ShaderDuel.Hands
                     // 更新上一帧缓存为当前帧
                     _prevRight = result.RightHand;
                     _hasPrevRight = true;
+
+                    //LogHand("Right", result.RightHand, result.HasRightHand);
+                }
+                else
+                {
+                    //Debug.LogWarning("[HandFeatureExtractor] 右手 landmarks 数据不足，无法计算特征。");
                 }
             }
             else
@@ -121,6 +140,7 @@ namespace ShaderDuel.Hands
                     _prevRight.IsTracked = false;
                     result.RightHand = _prevRight;
                 }
+                //Debug.Log("[HandFeatureExtractor] 未检测到右手。");
             }
 
             // 双手全局信息
@@ -134,6 +154,32 @@ namespace ShaderDuel.Hands
 
             Global = result;
         }
+
+        /*
+        private void LogHand(string label, HandFeatures hand, bool hasHandFlag)
+        {
+            // hasHandFlag = “这一帧是否真的检测到了手”
+            // hand.IsTracked  = 特征内部标记（延续历史帧时为 false）
+            string presence = hasHandFlag ? "Detected" : "NotDetected";
+            string tracked = hand.IsTracked ? "Tracked" : "Lost";
+
+            string orientN = hand.NormalOrientation.ToString();
+            string orientT = hand.TangentOrientation.ToString();
+
+            string shape =
+                $"Fist={hand.IsFist}, Open={hand.IsOpenPalm}, Pinch={hand.IsPinch}";
+
+            string speed =
+                $"PalmSpeed={hand.PalmSpeed:F2}, IndexSpeed={hand.IndexTipSpeed:F2}";
+
+            Debug.Log(
+                $"[HandDebug] {label} " +
+                $"Presence={presence}, Tracked={tracked}, " +
+                $"Normal={orientN}, Tangent={orientT}, " +
+                $"{shape}, {speed}"
+            );
+        }
+        */
 
         private void UpdateNoHands()
         {
@@ -196,8 +242,8 @@ namespace ShaderDuel.Hands
 
             if (handedness == Handedness.Right)
             {
-                // 右手：x 轴指向“小指 -> 食指”或“掌的右边”
-                palmRight = (indexMcp - pinkyMcp).normalized;
+                // 右手：x 轴指向“食指 -> 小指”或“掌的右边”
+                palmRight = (pinkyMcp - indexMcp).normalized;
 
                 // normal = vIndex × vPinky
                 palmNormal = Vector3.Cross(vIndex, vPinky).normalized;
@@ -205,7 +251,7 @@ namespace ShaderDuel.Hands
             else // Left
             {
                 // 左手：保持“局部 x 轴是手掌右侧”的语义，所以反过来
-                palmRight = (pinkyMcp - indexMcp).normalized;
+                palmRight = (indexMcp - pinkyMcp).normalized;
 
                 // normal = vPinky × vIndex（交换顺序）
                 palmNormal = Vector3.Cross(vPinky, vIndex).normalized;
@@ -334,11 +380,11 @@ namespace ShaderDuel.Hands
 
             // 为防止真实翻面被错认成异常值，暂时注释掉这段代码
             // 考虑未来使用严格的异常值剔除函数替代
-            /*
+            
             // 防止翻面：如果夹角大于约101度，就反转当前方向
             if (Vector3.Dot(prev, current) < -0.2f)
                 current = -current;
-            */
+            
 
             // 线性插值平滑
             var smoothed = Vector3.Lerp(prev, current, alpha);
@@ -357,11 +403,11 @@ namespace ShaderDuel.Hands
 
             float df = Vector3.Dot(dir, f);
             float du = Vector3.Dot(dir, u);
-            float dr = Vector3.Dot(dir, r);
+            float dl = Vector3.Dot(dir, r);
 
             float db = -df;
             float dd = -du;
-            float dl = -dr;
+            float dr = -dl;
 
             float maxAbs = Mathf.Max(
                 Mathf.Abs(df), Mathf.Abs(db),

@@ -179,6 +179,7 @@ public class WsClient : MonoBehaviour
             _latestJson = json;
         }
 
+        /*
         // 这里先简单做个可视化测试：有新消息时每秒打一次日志之类的
         _logTimer += Time.deltaTime;
         // 每隔 0.5 秒打印一次最新消息的前 80 个字符
@@ -187,7 +188,7 @@ public class WsClient : MonoBehaviour
             Debug.Log($"[WsClient] 最新消息: {_latestJson.Substring(0, Mathf.Min(80, _latestJson.Length))}");
             _logTimer = 0f;
         }
-        // 当前先不解析 JSON，等后面设计数据结构时再处理。
+        */
     }
 
     /// <summary>

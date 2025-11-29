@@ -4,7 +4,7 @@ import mediapipe as mp
 # ---------- Camera config ----------
 CAM_INDEX = 0
 W, H = 1280, 720
-TARGET_FPS = 30            # 仅作请求，是否成功需测量
+TARGET_FPS = 60            # 仅作请求，是否成功需测量
 
 # ---------- MediaPipe config ----------
 mp_hands = mp.solutions.hands

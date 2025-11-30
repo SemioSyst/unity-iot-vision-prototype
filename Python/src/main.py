@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from Python.src.app.audio_loop import audio_loop
 from Python.src.tools.ws_bridge import WsBridge
 from Python.src.app.hands_loop import hands_loop
 
@@ -23,6 +24,7 @@ async def main():
     await asyncio.gather(
         bridge.run_forever(),
         hands_loop(bridge, debug_show=False),
+        audio_loop(bridge, device=None),
     )
 
 

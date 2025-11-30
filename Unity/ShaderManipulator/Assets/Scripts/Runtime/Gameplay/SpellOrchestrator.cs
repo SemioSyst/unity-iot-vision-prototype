@@ -1,6 +1,7 @@
-using System.Collections.Generic;
-using UnityEngine;
 using ShaderDuel.Hands;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
 
 namespace ShaderDuel.Gameplay
 {
@@ -16,8 +17,11 @@ namespace ShaderDuel.Gameplay
         [Tooltip("允许短暂丢帧但仍视为手在场的最大帧数。")]
         [SerializeField] private int _maxMissingFrames = 5;
 
+        /*
         [Tooltip("所有可用的法术定义（TODO：后续填入具体法术）。")]
-        [SerializeField] private List<SpellDefinition> _spellDefinitions = new List<SpellDefinition>();
+        [SerializeReference] private List<SpellDefinition> _spellDefinitions = new List<SpellDefinition>();
+        */
+        private readonly List<SpellDefinition> _spellDefinitions = new List<SpellDefinition>(); // 先暂时硬编码空列表测试用
 
         /// <summary>左手状态。</summary>
         public HandTrackState LeftHand { get; private set; }
@@ -39,6 +43,9 @@ namespace ShaderDuel.Gameplay
 
             LeftHand = new HandTrackState(HandSide.Left);
             RightHand = new HandTrackState(HandSide.Right);
+
+            // 这里硬塞一个 DummySpellDefinition 进去，测试用
+            _spellDefinitions.Add(new DummySpellDefinition());
         }
 
         private void Update()
@@ -174,6 +181,61 @@ namespace ShaderDuel.Gameplay
             //         break;
             //     }
             // }
+
+            // 1. 先收集当前「空闲可用」的手（在场 + Phase 为 Idle）
+            bool leftFree = LeftHand.Phase == HandTrackPhase.Idle &&
+                             LeftHand.IsConsideredPresent(_maxMissingFrames);
+            bool rightFree = RightHand.Phase == HandTrackPhase.Idle &&
+                             RightHand.IsConsideredPresent(_maxMissingFrames);
+
+            if (!leftFree && !rightFree)
+                return; // 当前没有可用的手，直接返回
+
+            // 2. 简单版本：按 _spellDefinitions 的顺序尝试
+            //    （现在只有 DummySpellDefinition，后面再按 Priority 排序也行）
+            foreach (var def in _spellDefinitions)
+            {
+                // 先让法术用左右手整体上下文判断自己能不能启动
+                if (!def.CanStart(LeftHand, RightHand, features))
+                    continue;
+                Debug.Log($"[SpellOrchestrator] spell '{def.Id}' can start");
+                HandTrackState[] boundHands = null;
+
+                switch (def.HandRequirement)
+                {
+                    case SpellHandRequirement.SingleHand:
+                        // 单手法术：优先用空闲的右手，没有再用左手
+                        if (rightFree)
+                            boundHands = new[] { RightHand };
+                        else if (leftFree)
+                            boundHands = new[] { LeftHand };
+                        break;
+
+                    case SpellHandRequirement.DualHand:
+                        // 双手法术：两只手必须都空闲且在场
+                        if (leftFree && rightFree)
+                            boundHands = new[] { LeftHand, RightHand };
+                        break;
+                }
+
+                if (boundHands == null || boundHands.Length == 0)
+                    continue; // 这个法术当前找不到合适的手
+
+                // 3. 创建运行时实例
+                var instance = def.CreateInstance(this, boundHands, features);
+                if (instance == null)
+                    continue;
+
+                // 4. 绑定手到法术，并加入运行列表
+                BindHandsToSpell(instance);
+                _runningSpells.Add(instance);
+
+                // —— 临时调试输出：在 Console 里看什么时候起了哪个法术 —— 
+                Debug.Log($"[SpellOrchestrator] Start spell '{def.Id}' bound to {instance.BoundHands.Length} hand(s).");
+
+                // v1：一帧内只启动一个新法术
+                break;
+            }
         }
 
         private void BindHandsToSpell(RunningSpell instance)

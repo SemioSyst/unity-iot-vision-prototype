@@ -19,8 +19,7 @@ namespace ShaderDuel.Gameplay
     {
         NoHand = 0,   // 未检测到手
         Idle = 1,     // 手在场，未被任何法术占用
-        Candidate = 2,// 进入“施术候选”缓冲区
-        InSpell = 3   // 正在被某个法术实例占用
+        InSpell = 2   // 正在被某个法术实例占用
     }
 
     /// <summary>

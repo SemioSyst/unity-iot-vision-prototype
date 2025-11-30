@@ -943,6 +943,7 @@ GameObject:
   - component: {fileID: 1759436611}
   - component: {fileID: 1759436612}
   - component: {fileID: 1759436613}
+  - component: {fileID: 1759436614}
   m_Layer: 0
   m_Name: AppRoot
   m_TagString: Untagged
@@ -1011,6 +1012,20 @@ MonoBehaviour:
   _fingerExtendedThreshold: 0.08
   _fingerBentThreshold: 0.04
   _orientationMinDot: 0.35
+--- !u!114 &1759436614
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1759436609}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 867b1ce69b329084cb117e675ac58f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _featureExtractor: {fileID: 1759436613}
+  _maxMissingFrames: 5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

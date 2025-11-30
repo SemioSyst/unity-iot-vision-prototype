@@ -32,7 +32,9 @@ namespace ShaderDuel.Gameplay
         {
             if (_featureExtractor == null)
             {
-                _featureExtractor = FindObjectOfType<HandFeatureExtractor>();
+                Debug.LogError("[SpellOrchestrator] FeatureExtractor 未设置，请在 Inspector 里拖引用。");
+                enabled = false;
+                return;
             }
 
             LeftHand = new HandTrackState(HandSide.Left);
@@ -44,7 +46,7 @@ namespace ShaderDuel.Gameplay
             var dt = Time.deltaTime;
             var features = _featureExtractor.Global;
 
-            // 1. 更新左右手的 HandTrackState（NoHand / Idle / Candidate / InSpell）
+            // 1. 更新左右手的 HandTrackState（NoHand / Idle / InSpell）
             UpdateHandTrackState(LeftHand, features, isLeft: true);
             UpdateHandTrackState(RightHand, features, isLeft: false);
 
@@ -54,7 +56,7 @@ namespace ShaderDuel.Gameplay
             // 3. 处理已经结束 / 取消的法术实例（释放手）
             CleanupFinishedSpells();
 
-            // 4. 根据 Candidate 手 + features 决定是否创建新的法术实例
+            // 4. 根据 features 决定是否创建新的法术实例
             TryStartNewSpells(features);
         }
 
@@ -103,7 +105,7 @@ namespace ShaderDuel.Gameplay
             }
 
             // TODO：这里目前先简单地全部视为 Idle，
-            // 以后可以在此处加入“握拳 + 朝向稳定若干帧 → Candidate”等逻辑。
+            // 以后可以在此处加入拓展逻辑。
             handState.Phase = HandTrackPhase.Idle;
         }
 
@@ -155,7 +157,7 @@ namespace ShaderDuel.Gameplay
         {
             // TODO v1：先做一个非常保守的版本，只考虑单手法术 + 右手。
             // 后续：
-            // 1. 收集所有 Phase = Candidate 的手；
+            // 1. 根据 HandTrackState.Phase 判断哪些手可用；（Idle 才可用）
             // 2. 遍历 _spellDefinitions，按 Priority 排序；
             // 3. 对每个 SpellDefinition 调用 CanStart(left, right, features)；
             // 4. 选中一个法术，调用 CreateInstance(...) 创建 RunningSpell；

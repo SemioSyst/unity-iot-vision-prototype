@@ -26,8 +26,8 @@ namespace ShaderDuel.Hands
         [SerializeField] private float _orientationSmoothing = 0.25f;
 
         [Header("Finger / Orientation Thresholds")]
-        [SerializeField] private float _fingerExtendedThreshold = 0.08f;
-        [SerializeField] private float _fingerBentThreshold = 0.04f;
+        [SerializeField] private float _fingerExtendedThreshold = 0.15f;
+        [SerializeField] private float _fingerBentThreshold = 0.1f;
 
         [SerializeField] private float _orientationMinDot = 0.35f;
 
@@ -64,12 +64,6 @@ namespace ShaderDuel.Hands
                 UpdateNoHands();
                 return;
             }
-
-            /*
-            _logTimer += Time.deltaTime;
-            if (_logTimer < 0.5f) return;
-            _logTimer = 0f;
-            */
 
             GlobalHandFeatures result = default;
 

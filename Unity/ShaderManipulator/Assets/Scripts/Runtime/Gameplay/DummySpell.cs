@@ -1,5 +1,6 @@
 using UnityEngine;
 using ShaderDuel.Hands;
+using ShaderDuel.Audio;
 
 namespace ShaderDuel.Gameplay
 {
@@ -23,12 +24,13 @@ namespace ShaderDuel.Gameplay
         public override bool CanStart(
             HandTrackState left,
             HandTrackState right,
-            GlobalHandFeatures features)
+            GlobalHandFeatures handFeatures,
+            GlobalAudioFeatures audioFeatures)
         {
             // 没右手、或右手当前已经被别的法术占用，直接不行
             if (right == null) return false;
             if (right.Phase != HandTrackPhase.Idle) return false;
-            Debug.Log("[DummySpell] right hand is free");
+            //Debug.Log("[DummySpell] right hand is free");
 
             var f = right.Features;
             if (f.FramesSinceSeen > 3)
@@ -47,13 +49,23 @@ namespace ShaderDuel.Gameplay
             );
 
             // 比如说至少要保持 0.25 秒
-            return held >= 0.25f;
+            //return held >= 0.25f;
+            if (held >= 1.0f)
+            {
+                //Debug.Log("[DummySpell] Triggered!");
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public override RunningSpell CreateInstance(
             SpellOrchestrator orchestrator,
             HandTrackState[] boundHands,
-            GlobalHandFeatures features)
+            GlobalHandFeatures handFeatures,
+            GlobalAudioFeatures audioFeatures)
         {
             // 这里简单假设只绑定一只手（右手）
             return new DummySpellInstance(this, orchestrator, boundHands);
@@ -67,7 +79,7 @@ namespace ShaderDuel.Gameplay
     public class DummySpellInstance : RunningSpell
     {
         private float _elapsed;
-        private const float Duration = 0.5f;
+        private const float Duration = 2.0f;
 
         public DummySpellInstance(
             DummySpellDefinition def,
@@ -77,7 +89,9 @@ namespace ShaderDuel.Gameplay
         {
         }
 
-        public override void Tick(float dt, GlobalHandFeatures features)
+        public override void Tick(float dt,
+                                  GlobalHandFeatures handFeatures,
+                                  GlobalAudioFeatures audioFeatures)
         {
             if (IsCompleted || IsCancelled)
                 return;
@@ -90,11 +104,16 @@ namespace ShaderDuel.Gameplay
                 IsCompleted = true;
 
                 // 顺便填一下 RuntimeStatus，方便后面可视化/Shader 用
-                RuntimeStatus = new SpellRuntimeStatus
+                RuntimeStatus = new DummySpellRuntimeStatus
                 {
-                    SpellId = Definition.Id,
-                    NormalizedCharge = 1f,
-                    AimDirection = Vector3.forward // 暂时随便给个方向
+                    Progress01 = 1f
+                };
+            }
+            else
+            {
+                RuntimeStatus = new DummySpellRuntimeStatus
+                {
+                    Progress01 = Mathf.Clamp01(_elapsed / Duration)
                 };
             }
         }
@@ -107,8 +126,16 @@ namespace ShaderDuel.Gameplay
                 string key = $"Dummy:{hand.Side}:FistForward";
                 ConditionTimer.Reset(key);
             }
+            Debug.Log("[DummySpell] Ended.");
 
             // 这里暂时不需要通知 Shader 层，后面真法术再补
         }
+    }
+
+    public sealed class DummySpellRuntimeStatus : ISpellRuntimeStatus
+    {
+        public string SpellId => "DummySpell";
+
+        public float Progress01;
     }
 }

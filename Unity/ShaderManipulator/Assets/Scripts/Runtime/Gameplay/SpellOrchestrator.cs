@@ -1,4 +1,5 @@
 using ShaderDuel.Hands;
+using ShaderDuel.Audio;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -11,17 +12,17 @@ namespace ShaderDuel.Gameplay
     public class SpellOrchestrator : MonoBehaviour
     {
         [Header("Dependencies")]
-        [SerializeField] private HandFeatureExtractor _featureExtractor;
+        [SerializeField] private HandFeatureExtractor _handFeatureExtractor;
+        [SerializeField] private AudioFeatureExtractor _audioFeatureExtractor;
 
         [Header("Tuning")]
         [Tooltip("允许短暂丢帧但仍视为手在场的最大帧数。")]
         [SerializeField] private int _maxMissingFrames = 5;
 
-        /*
-        [Tooltip("所有可用的法术定义（TODO：后续填入具体法术）。")]
+        [Header("Spell Library")]
+        [Tooltip("所有可用的法术定义（按列表顺序或 Priority 排序调度）。")]
         [SerializeReference] private List<SpellDefinition> _spellDefinitions = new List<SpellDefinition>();
-        */
-        private readonly List<SpellDefinition> _spellDefinitions = new List<SpellDefinition>(); // 先暂时硬编码空列表测试用
+        //private readonly List<SpellDefinition> _spellDefinitions = new List<SpellDefinition>(); // 先暂时硬编码空列表测试用
 
         /// <summary>左手状态。</summary>
         public HandTrackState LeftHand { get; private set; }
@@ -34,37 +35,52 @@ namespace ShaderDuel.Gameplay
 
         private void Awake()
         {
-            if (_featureExtractor == null)
+            if (_handFeatureExtractor == null)
             {
-                Debug.LogError("[SpellOrchestrator] FeatureExtractor 未设置，请在 Inspector 里拖引用。");
+                Debug.LogError("[SpellOrchestrator] HandFeatureExtractor 未设置，请在 Inspector 里拖引用。");
                 enabled = false;
                 return;
+            }
+
+            if (_audioFeatureExtractor == null)
+            {
+                // 音频是可选的，只提醒一下
+                Debug.Log("[SpellOrchestrator] AudioFeatureExtractor 未设置，本局不会使用音频特征。");
             }
 
             LeftHand = new HandTrackState(HandSide.Left);
             RightHand = new HandTrackState(HandSide.Right);
 
-            // 这里硬塞一个 DummySpellDefinition 进去，测试用
-            _spellDefinitions.Add(new DummySpellDefinition());
+            if (_spellDefinitions == null || _spellDefinitions.Count == 0)
+            {
+                Debug.LogWarning("[SpellOrchestrator] 当前法术库为空，请在 Inspector 中添加 SpellDefinition（目前可以先塞一个 DummySpellDefinition）。");
+            }
         }
 
         private void Update()
         {
             var dt = Time.deltaTime;
-            var features = _featureExtractor.Global;
+            var handFeatures = _handFeatureExtractor.Global;
+
+            // 音频可选：如果没挂，就用 default（HasAudio = false）
+            GlobalAudioFeatures audioFeatures = default;
+            if (_audioFeatureExtractor != null)
+            {
+                audioFeatures = _audioFeatureExtractor.Global;
+            }
 
             // 1. 更新左右手的 HandTrackState（NoHand / Idle / InSpell）
-            UpdateHandTrackState(LeftHand, features, isLeft: true);
-            UpdateHandTrackState(RightHand, features, isLeft: false);
+            UpdateHandTrackState(LeftHand, handFeatures, isLeft: true);
+            UpdateHandTrackState(RightHand, handFeatures, isLeft: false);
 
             // 2. 先更新已有法术实例内部 FSM
-            TickRunningSpells(dt, features);
+            TickRunningSpells(dt, handFeatures, audioFeatures);
 
             // 3. 处理已经结束 / 取消的法术实例（释放手）
             CleanupFinishedSpells();
 
             // 4. 根据 features 决定是否创建新的法术实例
-            TryStartNewSpells(features);
+            TryStartNewSpells(handFeatures, audioFeatures);
         }
 
         #region 手级状态更新（TODO：具体判定规则后续细化）
@@ -81,11 +97,13 @@ namespace ShaderDuel.Gameplay
             {
                 hasHand = features.HasLeftHand;
                 handFeatures = features.LeftHand;
+                //Debug.Log($"[SpellOrchestrator] Left hand tracked: {hasHand}, isTracked: {handFeatures.IsTracked}"); // 调试输出
             }
             else
             {
                 hasHand = features.HasRightHand;
                 handFeatures = features.RightHand;
+                //Debug.Log($"[SpellOrchestrator] Right hand tracked: {hasHand}, isTracked: {handFeatures.IsTracked}"); // 调试输出
             }
 
             if (hasHand && handFeatures.IsTracked)
@@ -120,11 +138,13 @@ namespace ShaderDuel.Gameplay
 
         #region 运行中的法术更新与清理
 
-        private void TickRunningSpells(float dt, GlobalHandFeatures features)
+        private void TickRunningSpells(float dt, 
+                                       GlobalHandFeatures handFeatures,
+                                       GlobalAudioFeatures audioFeatures)
         {
             foreach (var spell in _runningSpells)
             {
-                spell.Tick(dt, features);
+                spell.Tick(dt, handFeatures, audioFeatures);
             }
         }
 
@@ -160,7 +180,8 @@ namespace ShaderDuel.Gameplay
 
         #region 启动新法术（调度器核心 TODO）
 
-        private void TryStartNewSpells(GlobalHandFeatures features)
+        private void TryStartNewSpells(GlobalHandFeatures handFeatures,
+                                       GlobalAudioFeatures audioFeatures)
         {
             // TODO v1：先做一个非常保守的版本，只考虑单手法术 + 右手。
             // 后续：
@@ -192,13 +213,16 @@ namespace ShaderDuel.Gameplay
                 return; // 当前没有可用的手，直接返回
 
             // 2. 简单版本：按 _spellDefinitions 的顺序尝试
-            //    （现在只有 DummySpellDefinition，后面再按 Priority 排序也行）
+            // 目前按列表顺序；以后可以先 OrderByDescending(def => def.Priority)
             foreach (var def in _spellDefinitions)
             {
+                if (def == null) continue;
+
                 // 先让法术用左右手整体上下文判断自己能不能启动
-                if (!def.CanStart(LeftHand, RightHand, features))
+                if (!def.CanStart(LeftHand, RightHand, handFeatures, audioFeatures))
                     continue;
                 Debug.Log($"[SpellOrchestrator] spell '{def.Id}' can start");
+                
                 HandTrackState[] boundHands = null;
 
                 switch (def.HandRequirement)
@@ -222,7 +246,7 @@ namespace ShaderDuel.Gameplay
                     continue; // 这个法术当前找不到合适的手
 
                 // 3. 创建运行时实例
-                var instance = def.CreateInstance(this, boundHands, features);
+                var instance = def.CreateInstance(this, boundHands, handFeatures, audioFeatures);
                 if (instance == null)
                     continue;
 

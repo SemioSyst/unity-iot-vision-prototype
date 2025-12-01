@@ -1,5 +1,7 @@
-using UnityEngine;
+using ShaderDuel.Audio;
 using ShaderDuel.Hands;
+using System;
+using UnityEngine;
 
 namespace ShaderDuel.Gameplay
 {
@@ -18,6 +20,7 @@ namespace ShaderDuel.Gameplay
     /// 具体每个法术可以从这里派生，重写 CanStart / CreateInstance。
     /// （后面你愿意的话可以改成 ScriptableObject 配置）
     /// </summary>
+    [Serializable]
     public abstract class SpellDefinition
     {
         /// <summary>法术的标识符（比如 "small_blast"）。</summary>
@@ -33,7 +36,10 @@ namespace ShaderDuel.Gameplay
         /// 调度器调用：当前这一帧，是否允许从给定手状态启动这个法术。
         /// 注意：这里只做“粗判定”，具体 FSM 逻辑由 RunningSpell 内部完成。
         /// </summary>
-        public abstract bool CanStart(HandTrackState left, HandTrackState right, GlobalHandFeatures features);
+        public abstract bool CanStart(HandTrackState left, 
+                                      HandTrackState right, 
+                                      GlobalHandFeatures handFeatures,
+                                      GlobalAudioFeatures audioFeatures);
 
         /// <summary>
         /// 调度器调用：正式创建一个运行中的法术实例。
@@ -41,7 +47,8 @@ namespace ShaderDuel.Gameplay
         /// </summary>
         public abstract RunningSpell CreateInstance(SpellOrchestrator orchestrator,
                                                     HandTrackState[] hands,
-                                                    GlobalHandFeatures features);
+                                                    GlobalHandFeatures handFeatures,
+                                                    GlobalAudioFeatures audioFeatures);
     }
 
     /// <summary>
@@ -58,8 +65,10 @@ namespace ShaderDuel.Gameplay
         /// <summary>法术是否被玩家 / 系统取消。</summary>
         public bool IsCancelled { get; protected set; }
 
-        /// <summary>用于传给视觉层的简单输出（可扩展）。</summary>
-        public SpellRuntimeStatus RuntimeStatus;
+        /// <summary>
+        /// 用来向视觉层 / 上层逻辑输出当前法术运行时状态的接口。
+        /// </summary>
+        public ISpellRuntimeStatus RuntimeStatus { get; protected set; }
 
         protected readonly SpellOrchestrator Orchestrator;
 
@@ -76,7 +85,9 @@ namespace ShaderDuel.Gameplay
         /// 每帧更新内部 FSM 逻辑。
         /// TODO：具体法术在这里实现“准备/蓄力/释放/冷却”等阶段。
         /// </summary>
-        public abstract void Tick(float deltaTime, GlobalHandFeatures features);
+        public abstract void Tick(float deltaTime, 
+                                  GlobalHandFeatures handFeatures,
+                                  GlobalAudioFeatures audioFeatures);
 
         /// <summary>
         /// 法术实例被销毁前的清理逻辑（如重置某些状态、发事件）。
@@ -85,15 +96,12 @@ namespace ShaderDuel.Gameplay
     }
 
     /// <summary>
-    /// 提供给视觉层 / 上层逻辑使用的法术运行时输出。
-    /// 暂时只包含一个 Phase 和 Charge，后续可以扩展。
+    /// 提供给视觉层 / 上层逻辑使用的法术运行时输出接口。
     /// </summary>
-    public struct SpellRuntimeStatus
+    public interface ISpellRuntimeStatus
     {
-        public string SpellId;     // 当前法术 Id
-        public float NormalizedCharge; // 0–1，蓄力程度
-        public Vector3 AimDirection;   // 当前攻击方向
-        // TODO: 以后可以加入更多字段（是否为强力版、当前阶段等）
+        string SpellId { get; }
     }
+
 }
 

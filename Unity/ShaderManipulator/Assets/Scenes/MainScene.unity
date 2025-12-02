@@ -497,6 +497,8 @@ GameObject:
   - component: {fileID: 691584685}
   - component: {fileID: 691584684}
   - component: {fileID: 691584686}
+  - component: {fileID: 691584687}
+  - component: {fileID: 691584688}
   m_Layer: 0
   m_Name: DebugNode
   m_TagString: Untagged
@@ -555,6 +557,40 @@ MonoBehaviour:
   _worldOffset: {x: 0, y: 1, z: 0}
   _palmRadius: 0.05
   _axisLength: 0.25
+--- !u!114 &691584687
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 691584683}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24610f56d980a3b4ba307348ae48810c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _extractor: {fileID: 1759436616}
+  _log: 1
+  _logInterval: 0.5
+  _drawGizmos: 1
+  _timeScale: 3
+  _dbScale: 0.05
+  _offset: {x: 0, y: 0, z: 0}
+--- !u!114 &691584688
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 691584683}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 373a2cf12c841654abf68478c57f343e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _orchestrator: {fileID: 1759436614}
+  _logInterval: 0.5
+  _logWhenEmpty: 1
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -946,6 +982,7 @@ GameObject:
   - component: {fileID: 1759436613}
   - component: {fileID: 1759436616}
   - component: {fileID: 1759436614}
+  - component: {fileID: 1759436617}
   m_Layer: 0
   m_Name: AppRoot
   m_TagString: Untagged
@@ -1026,8 +1063,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 867b1ce69b329084cb117e675ac58f87, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _featureExtractor: {fileID: 1759436613}
+  _handFeatureExtractor: {fileID: 1759436613}
+  _audioFeatureExtractor: {fileID: 1759436616}
   _maxMissingFrames: 5
+  _spellDefinitions:
+  - {fileID: 11400000, guid: 50ba0eca99dedb940936ed732d3161e4, type: 2}
 --- !u!114 &1759436615
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1058,6 +1098,23 @@ MonoBehaviour:
   _smoothing: 0.35
   _loudThreshold: -20
   _silentThreshold: -50
+--- !u!114 &1759436617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1759436609}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c5e485c9bcd1324daa9c62ad56f8707, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _spellOrchestrator: {fileID: 1759436614}
+  _initialEnemyConfigs:
+  - Kind: 0
+    Count: 1
+    InitialHealth: 50
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

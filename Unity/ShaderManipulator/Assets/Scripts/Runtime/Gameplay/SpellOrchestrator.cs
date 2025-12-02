@@ -33,6 +33,11 @@ namespace ShaderDuel.Gameplay
         /// <summary>当前正在运行的法术实例列表。</summary>
         private readonly List<RunningSpell> _runningSpells = new List<RunningSpell>();
 
+        /// <summary>
+        /// 暴露只读的运行中法术列表。用于外部获取RuntimeStatus接口等。
+        /// </summary>
+        public IReadOnlyList<RunningSpell> RunningSpells => _runningSpells;
+
         private void Awake()
         {
             if (_handFeatureExtractor == null)
@@ -120,6 +125,7 @@ namespace ShaderDuel.Gameplay
             if (handState.CurrentSpell != null)
             {
                 handState.Phase = HandTrackPhase.InSpell;
+                //Debug.Log($"[SpellOrchestrator] Hand {handState.Side} is in spell '{handState.CurrentSpell.Definition.Id}'");
                 return;
             }
 
@@ -179,7 +185,11 @@ namespace ShaderDuel.Gameplay
         #endregion
 
         #region 启动新法术（调度器核心 TODO）
-
+        /// <summary>
+        /// 核心调度逻辑：根据当前手部状态和全局特征，决定是否启动新的法术实例。
+        /// </summary>
+        /// <param name="handFeatures"></param>
+        /// <param name="audioFeatures"></param>
         private void TryStartNewSpells(GlobalHandFeatures handFeatures,
                                        GlobalAudioFeatures audioFeatures)
         {
@@ -262,6 +272,11 @@ namespace ShaderDuel.Gameplay
             }
         }
 
+        /// <summary>
+        /// 获取法术实例后，通过遍历实例的 BoundHands，把每只手的 CurrentSpell 指向该实例，
+        /// 同时把手的 Phase 设为 InSpell。
+        /// </summary>
+        /// <param name="instance"></param>
         private void BindHandsToSpell(RunningSpell instance)
         {
             foreach (var hand in instance.BoundHands)

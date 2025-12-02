@@ -7,7 +7,6 @@ namespace ShaderDuel.Gameplay
 {
     /// <summary>
     /// 法术需要的手数：单手 / 双手。
-    /// （后面如果要支持三手怪物可以再扩展枚举）
     /// </summary>
     public enum SpellHandRequirement
     {
@@ -21,7 +20,7 @@ namespace ShaderDuel.Gameplay
     /// （后面你愿意的话可以改成 ScriptableObject 配置）
     /// </summary>
     [Serializable]
-    public abstract class SpellDefinition
+    public abstract class SpellDefinition : ScriptableObject
     {
         /// <summary>法术的标识符（比如 "small_blast"）。</summary>
         public abstract string Id { get; }
@@ -98,7 +97,7 @@ namespace ShaderDuel.Gameplay
     /// <summary>
     /// 提供给视觉层 / 上层逻辑使用的法术运行时输出接口。
     /// </summary>
-    public interface ISpellRuntimeStatus
+    public interface ISpellRuntimeStatus : IRuntimeStatus
     {
         string SpellId { get; }
     }

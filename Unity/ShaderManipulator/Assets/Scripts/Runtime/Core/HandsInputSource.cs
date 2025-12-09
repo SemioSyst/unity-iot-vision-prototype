@@ -52,7 +52,9 @@ namespace ShaderDuel.Core
                 return;
             }
 
-            // 尝试解析为 HandsMessage
+            // 尝试解析为 HandsMessage 对象
+            // out 参数为 HandsMessage 类型的 msg
+            // 不是 hands 消息或解析失败就直接返回
             if (!HandsMessageParser.TryParse(json, out var msg))
             {
                 return; // 不是 hands 消息或解析失败

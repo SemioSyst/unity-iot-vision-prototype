@@ -16,8 +16,8 @@ namespace ShaderDuel.Gameplay
         private float _phaseTimer;
 
         // 攻击节奏相关
-        private readonly float _attackInterval = 60f;      // 每 60 秒一轮
-        private readonly float _attackWindupDuration = 2f; // 蓄力 2 秒
+        private readonly float _attackInterval = 30f;      // 每 30 秒一轮
+        private readonly float _attackWindupDuration = 6f; // 蓄力 6 秒
         private readonly float _attackRecoveryDuration = 0.5f; // 收招 0.5 秒
         private float _timeSinceLastAttack;
         private bool _autoAttackEnabled = true;
@@ -148,6 +148,7 @@ namespace ShaderDuel.Gameplay
             // 3）到总时长结束 → 回到 Alive
             if (_phaseTimer >= totalDuration)
             {
+                _status.AttackCharge01 = 0f;
                 ChangePhase(EnemyPhase.Alive);
             }
         }

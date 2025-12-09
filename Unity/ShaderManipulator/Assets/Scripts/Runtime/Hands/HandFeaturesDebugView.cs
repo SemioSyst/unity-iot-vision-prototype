@@ -123,7 +123,7 @@ namespace ShaderDuel.Hands
         {
             // 把 0~1 的归一化坐标“拉伸 + 平移”到世界坐标，方便在 Scene 里看
             Vector3 worldPalm =
-                new Vector3(hand.PalmCenter.x, hand.PalmCenter.y, -hand.PalmCenter.z)
+                new Vector3(hand.PalmCenter.x, 1.0f - hand.PalmCenter.y, -hand.PalmCenter.z)
                 * _worldScale + _worldOffset;
 
             // 掌心小球

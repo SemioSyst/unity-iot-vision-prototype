@@ -7,6 +7,12 @@ namespace ShaderDuel.Gameplay
     {
         public int EnemyId { get; set; }
 
+        // EnemyPhase 枚举值，表示当前所处的阶段
+        // Inactive 完全没东西（槽位空）
+        // Spawning 出现动画 / 渐显
+        // Alive 存在中（待命）
+        // Attacking 正在攻击（给 shader 做攻击特效）
+        // Dying 死亡动画中
         public EnemyPhase Phase { get; set; }
         public float PhaseProgress01 { get; set; }
 

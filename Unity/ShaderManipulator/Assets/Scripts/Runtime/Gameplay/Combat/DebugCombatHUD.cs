@@ -67,7 +67,8 @@ namespace ShaderDuel.Gameplay
                 {
                     sb.AppendLine(
                         $"Enemy {dummy.EnemyId} | HP: {dummy.Health:F1} | " +
-                        $"Charge: {dummy.AttackCharge01:F2} | Alive: {dummy.IsAlive}"
+                        $"Charge: {dummy.AttackCharge01:F2} | Alive: {dummy.IsAlive} | " +
+                        $"HitThisFrame: {dummy.AttackHitThisFrame}"
                     );
                 }
                 else

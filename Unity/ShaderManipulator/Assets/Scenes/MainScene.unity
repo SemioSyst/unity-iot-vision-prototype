@@ -777,13 +777,14 @@ GameObject:
   - component: {fileID: 891506972}
   - component: {fileID: 891506971}
   - component: {fileID: 891506970}
+  - component: {fileID: 891506974}
   m_Layer: 0
   m_Name: BossQuad
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!64 &891506970
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -874,6 +875,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &891506974
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 891506969}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 363ead1f7a5011748998fd40a6260089, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetRenderer: {fileID: 891506971}
+  enemyIdProperty: _EnemyId
+  enemyPhaseProperty: _EnemyPhase
+  enemyPhaseProgressProperty: _EnemyPhaseProgress01
+  enemyHealth01Property: _EnemyHealth01
+  enemyHealthMaxProperty: _EnemyHealthMax
+  enemyAttackCharge01Property: _EnemyAttackCharge01
+  enemyAttackHitPulseProperty: _EnemyAttackHitPulse01
 --- !u!1 &1043906584
 GameObject:
   m_ObjectHideFlags: 0
@@ -1212,6 +1233,7 @@ MonoBehaviour:
   _maxMissingFrames: 5
   _spellDefinitions:
   - {fileID: 11400000, guid: 50ba0eca99dedb940936ed732d3161e4, type: 2}
+  - {fileID: 11400000, guid: ee709d040cdc5b0428e8396c3ab4353e, type: 2}
 --- !u!114 &1759436615
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1276,6 +1298,7 @@ MonoBehaviour:
   combatDriver: {fileID: 1759436617}
   HandFeatureExtractor: {fileID: 1759436613}
   spellQuadController: {fileID: 1043906589}
+  bossQuadController: {fileID: 891506974}
   logOnceOnStart: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

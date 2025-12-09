@@ -80,6 +80,10 @@ namespace ShaderDuel.Gameplay
                         $"Activation={ew.Activation01:F2}"
                     );
                 }
+                else if (status is ChargeBeamRuntimeStatus cb)
+                {
+                    PrintChargeBeam(cb);
+                }
                 else
                 {
                     // 通用兜底：至少把类型打出来
@@ -88,6 +92,22 @@ namespace ShaderDuel.Gameplay
                     );
                 }
             }
+        }
+
+        private void PrintChargeBeam(ChargeBeamRuntimeStatus s)
+        {
+            // 这里挑了几个最有用的字段：
+            // Phase / PhaseProgress01 / ChargingProgress01 / BeamOriginUV / BeamSizeUV / RotationDeg / Activation01
+            Debug.Log(
+                $"[ChargeBeam] " +
+                $"phase={s.Phase} " +
+                $"phaseT={s.PhaseProgress01:0.00} " +
+                $"charge={s.ChargingProgress01:0.00} " +
+                $"origin={s.BeamOriginUV} " +
+                $"size={s.BeamSizeUV} " +
+                $"rot={s.RotationDeg:0.0} " +
+                $"act={s.Activation01:0.00}"
+            );
         }
     }
 }

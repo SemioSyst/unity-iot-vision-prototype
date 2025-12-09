@@ -1,3 +1,4 @@
+using ShaderDuel.Gameplay;
 using UnityEngine;
 
 namespace ShaderDuel.Visual
@@ -20,12 +21,49 @@ namespace ShaderDuel.Visual
         // public float PulseIntensity;
     }
 
-    // TODO: Boss 层的具体字段之后按 IEnemyRuntimeStatus 再细化
+    /// <summary>
+    /// BossQuad 所需的敌人状态快照。
+    /// 所有字段都假定已经在 VisualSystem 那一层换算好。
+    /// </summary>
     public struct BossLayerState
     {
-        // public float Health01;
-        // public float Enraged01;
-        // public float AttackTelegraph01;
+        /// <summary>
+        /// 敌人 ID（如果只有一个敌人，可以直接用 0）。
+        /// </summary>
+        public int EnemyId;
+
+        /// <summary>
+        /// 敌人当前阶段（Spawning / Alive / Attacking / Dying / Inactive）。
+        /// Shader 里通常会用 int / float 来判断阶段分支。
+        /// </summary>
+        public EnemyPhase EnemyPhase;
+
+        /// <summary>
+        /// 当前阶段内部进度（0~1）。
+        /// 例如 Spawning/Dying 的渐显/渐隐等。
+        /// </summary>
+        public float EnemyPhaseProgress01;
+
+        /// <summary>
+        /// 敌人生命 0~1（已经归一化的血量百分比）。
+        /// </summary>
+        public float EnemyHealth01;
+
+        /// <summary>
+        /// 敌人最大生命，用于 Shader 做一些和最大值相关的效果（可选）。
+        /// </summary>
+        public float EnemyHealthMax;
+
+        /// <summary>
+        /// 当前攻击蓄力进度 0~1（Attacking 阶段用）。
+        /// </summary>
+        public float EnemyAttackCharge01;
+
+        /// <summary>
+        /// 攻击命中瞬间的脉冲值（0~1）。
+        /// 可以由 VisualSystem 做一个短暂衰减的 pulse。
+        /// </summary>
+        public float EnemyAttackHitPulse01;
     }
 
     // TODO: Spell 层之后根据 ISpellRuntimeStatus 来设计

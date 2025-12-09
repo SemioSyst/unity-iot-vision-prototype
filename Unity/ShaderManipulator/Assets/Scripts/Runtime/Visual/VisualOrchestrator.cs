@@ -21,6 +21,9 @@ public sealed class VisualOrchestrator : MonoBehaviour
 
     [Header("Layer Controllers")]
     [SerializeField] private SpellQuadController spellQuadController;
+    [SerializeField] private BossQuadController bossQuadController;
+    // [SerializeField] private BackgroundQuadController backgroundQuadController;
+    // [SerializeField] private OverlayQuadController overlayQuadController;
 
     // 之后会在这里注册各种视觉系统：
     // EnemyBossVisualSystem / SpellVisualSystem / AudioBackgroundPulseSystem 等
@@ -45,6 +48,7 @@ public sealed class VisualOrchestrator : MonoBehaviour
         // _visualSystems.Add(new EnemyBossVisualSystem());
         // _visualSystems.Add(new SpellVisualSystem());
         _visualSystems.Add(new HandPalmMarkerSystem());
+        _visualSystems.Add(new EnemyBossVisualSystem());
     }
 
     private void Update()
@@ -75,16 +79,29 @@ public sealed class VisualOrchestrator : MonoBehaviour
         // 4. TODO：在后续步骤里，把 state 传给各个 QuadController.ApplyState(...)
         // 例如：
         // bossQuadController.ApplyState(state.Boss);
-        spellQuadController.ApplyState(state.Spell);
+        // spellQuadController.ApplyState(state.Spell);
         // backgroundQuadController.ApplyState(state.Background);
         // overlayQuadController.ApplyState(state.Overlay);
+
+        // 若有对应的 QuadController，则应用状态
+        // Boss Quad Controller
+        if (bossQuadController != null)
+        {
+            bossQuadController.ApplyState(in state.Boss);
+        }
+
+        // Spell Quad Controller
+        if (spellQuadController != null)
+        {
+            spellQuadController.ApplyState(in state.Spell);
+        }
 
         // 5. 初始阶段的简单 Debug：确认管线在跑
         if (logOnceOnStart && !_logged)
         {
             _logged = true;
             Debug.Log("[VisualOrchestrator] Visual pipeline ticking. " +
-                      "Hands / Audio / Combat 已打包进 VisualFrameInput。");
+                      "Hands / Audio / HandsFeatures / Combat 已打包进 VisualFrameInput。");
         }
     }
 }

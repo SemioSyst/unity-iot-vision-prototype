@@ -23,6 +23,15 @@ Shader "ShaderDuel/SpellQuad"
 
         // 整体强度
         _GlobalIntensity ("Global Intensity", Range(0, 3)) = 1.0
+
+        // ---- Energy Wall & Combat ----
+        _HasEnergyWall              ("Has Energy Wall", Float) = 0
+        _WallCenterUV               ("Wall Center UV", Vector) = (0.5, 0.5, 0, 0)
+        _WallSizeUV                 ("Wall Size UV", Vector)   = (0.4, 0.4, 0, 0)
+        _WallPhase                  ("Wall Phase", Float)      = 0
+
+        _ShieldBoostByBossAttack01  ("Shield Boost By Boss Attack", Range(0,1)) = 0
+        _Guarded                    ("Guarded", Range(0,1)) = 0
     }
 
     SubShader
@@ -49,6 +58,10 @@ Shader "ShaderDuel/SpellQuad"
             #pragma fragment frag
 
             #include "UnityCG.cginc"
+
+            #define WALLPHASE_ARMED      0.0
+            #define WALLPHASE_CHANNELING 1.0
+            #define WALLPHASE_FADE       2.0
 
             #define PI      3.14159265
             #define TWO_PI  6.28318530
@@ -78,6 +91,15 @@ Shader "ShaderDuel/SpellQuad"
 
             float  _GlobalIntensity;
 
+            // ==== Energy Wall & Combat ====
+            float  _HasEnergyWall;
+            float4 _WallCenterUV;
+            float4 _WallSizeUV;
+            float  _WallPhase;
+
+            float  _ShieldBoostByBossAttack01;
+            float  _Guarded;
+
             // 2D hash，用于 glitch / 像素闪烁
             float hash21(float2 p)
             {
@@ -105,6 +127,158 @@ Shader "ShaderDuel/SpellQuad"
                 o.uv  = v.uv;
                 return o;
             }
+
+            // Armed 阶段：掌心的蓝色像素能量球
+            float4 RenderBluePalmOrb(float2 uv, float2 palmPos01, float visible)
+            {
+                if (visible <= 0.0001)
+                    return float4(0,0,0,0);
+
+                // 像素化
+                float2 pixelUV = floor(uv * _PixelDensity) / _PixelDensity;
+
+                float aspect = _ScreenParams.x / _ScreenParams.y;
+                float2 p = float2((pixelUV.x - palmPos01.x) * aspect,
+                                  (pixelUV.y - palmPos01.y));
+                float r = length(p) + 1e-6;
+
+                float radius   = _CoreRadius * 0.8;  // 比默认掌心稍小一点
+                float coreMask = saturate(1.0 - r / radius);
+                coreMask = pow(coreMask, _CoreEdge);
+
+                // 轻微呼吸 + glitch 抖动，用 _Time 自己驱动
+                float t = _Time.y;
+                float breathe = 0.85 + 0.15 * sin(t * 2.0 + palmPos01.x * 10.0);
+
+                float2 glitchCell = floor(pixelUV * (_GlitchScale * 0.7));
+                float n = hash21(glitchCell + _Time.y * (_GlitchSpeed * 0.7));
+                float glitchMask = lerp(0.7, 1.3, n);
+
+                coreMask *= breathe * glitchMask;
+
+                // 蓝色能量
+                float3 colA = float3(0.1, 0.3, 0.7);
+                float3 colB = float3(0.4, 0.8, 1.4);
+                float3 col  = lerp(colA, colB, coreMask);
+
+                float alpha = coreMask * visible * _GlobalIntensity;
+                return float4(col, alpha);
+            }
+
+                        // 计算一块矩形盾牌的主体 mask（0~1）
+            float ShieldBodyMask(float2 uv)
+            {
+                float2 center = _WallCenterUV.xy;
+                float2 halfSize = max(_WallSizeUV.xy * 0.5, float2(1e-4, 1e-4));
+
+                float2 p = (uv - center) / halfSize;
+                float d = max(abs(p.x), abs(p.y)); // 方形体积
+
+                float mask = smoothstep(1.0, 0.9, d);
+                return mask;
+            }
+
+            // Channeling 阶段：展开中的护盾（用 _Time 做循环“展开感”）
+            float4 RenderWallChanneling(float2 uv)
+            {
+                float body = ShieldBodyMask(uv);
+                if (body <= 0.001)
+                    return float4(0,0,0,0);
+
+                float2 pixelUV = floor(uv * _PixelDensity) / _PixelDensity;
+
+                // 盾面内部的流动噪声
+                float2 flowUV = pixelUV * 25.0;
+                float t = _Time.y;
+                float band = sin(flowUV.y * 3.0 + t * 1.8);
+                float n   = hash21(flowUV + t * 0.5);
+
+                float flow = saturate(0.4 + 0.3 * band + 0.3 * n);
+
+                // 基础蓝色
+                float3 baseColA = float3(0.15, 0.3, 0.6);
+                float3 baseColB = float3(0.3, 0.7, 1.0);
+                float3 col = lerp(baseColA, baseColB, flow);
+
+                // Boss 攻击时的整体加亮
+                float boost = saturate(_ShieldBoostByBossAttack01);
+                col *= (1.0 + boost * 2.0);
+
+                // 叠加几圈波纹（从中心扩散）
+                float2 center = _WallCenterUV.xy;
+                float dist = length(uv - center);
+                float ripplePhase = dist * 40.0 - t * 8.0;
+                float ripple = sin(ripplePhase);
+                ripple = smoothstep(0.7, 1.0, ripple);  // 只保留波峰
+                ripple *= exp(-dist * 6.0);             // 越远越淡
+
+                // 波纹强度也受 boost 控制：Boss 攻击时更明显
+                col += ripple * boost * 1.5;
+
+                float alpha = body * 0.75 * _GlobalIntensity;
+                return float4(col, alpha);
+            }
+
+            // Fade 阶段：像素崩解（用 _Time 自己走一段 0~1）
+            float4 RenderWallFade(float2 uv)
+            {
+                float body = ShieldBodyMask(uv);
+                if (body <= 0.001)
+                    return float4(0,0,0,0);
+
+                // 盾体上的像素格子
+                float2 cell = floor(uv * (_PixelDensity * 0.6));
+                float rnd = hash21(cell);
+
+                // 用时间做一个循环的 fadeT（0~1 再回0）
+                float t = _Time.y;
+                float fadeT = saturate(0.5 + 0.5 * sin(t * 1.5)); // 简单循环
+
+                // fadeT 越大，被删掉的像素越多
+                if (rnd < fadeT)
+                    return float4(0,0,0,0);
+
+                // 残留的像素，随 fadeT 逐渐变暗、透明
+                float3 col = float3(0.3, 0.7, 1.0) * (1.0 - fadeT);
+                float alpha = body * (1.0 - fadeT) * 0.8 * _GlobalIntensity;
+
+                return float4(col, alpha);
+            }
+
+            // 渲染能量墙效果总调度
+            float4 RenderEnergyWall(float2 uv)
+            {
+                if (_HasEnergyWall < 0.5)
+                    return float4(0,0,0,0);
+
+                // 把 Phase 近似取整
+                float phase = round(_WallPhase);
+
+                // Armed：掌心蓝色能量球（不画 trail）
+                if (abs(phase - WALLPHASE_ARMED) < 0.5)
+                {
+                    float4 col = 0;
+                    col += RenderBluePalmOrb(uv, _LeftPalmPos.xy,  _LeftPalmVisible);
+                    col += RenderBluePalmOrb(uv, _RightPalmPos.xy, _RightPalmVisible);
+                    return col;
+                }
+
+                // Channeling：展开的护盾 + Boss 攻击波纹
+                if (abs(phase - WALLPHASE_CHANNELING) < 0.5)
+                {
+                    return RenderWallChanneling(uv);
+                }
+
+                // Fade：像素崩解
+                if (abs(phase - WALLPHASE_FADE) < 0.5)
+                {
+                    return RenderWallFade(uv);
+                }
+
+                // 其它未知 Phase 就先透明
+                return float4(0,0,0,0);
+            }
+
 
             // 渲染单只掌心的能量核 + 拖尾
             // uv        : 当前像素的屏幕坐标 (0~1)
@@ -190,22 +364,26 @@ Shader "ShaderDuel/SpellQuad"
             {
                 float2 uv = i.uv;
 
-                // 最终颜色/透明度累加器
                 float4 spellColor = float4(0,0,0,0);
 
-                // === 掌心法术层：左右手 ===
-                spellColor += RenderPalm(uv, _LeftPalmPos.xy,  _LeftPalmVisible);
-                spellColor += RenderPalm(uv, _RightPalmPos.xy, _RightPalmVisible);
+                bool hasWall = (_HasEnergyWall > 0.5);
 
-                // === TODO: 这里可以继续叠加其它法术效果 ===
-                // 例如：
-                // spellColor = RenderEnergyWall(spellColor, uv, ...);
-                // spellColor = RenderProjectile(spellColor, uv, ...);
+                // 如果当前没有任何激活的法术 → 显示 Idle 掌心特效
+                if (!hasWall)
+                {
+                    spellColor += RenderPalm(uv, _LeftPalmPos.xy,  _LeftPalmVisible);
+                    spellColor += RenderPalm(uv, _RightPalmPos.xy, _RightPalmVisible);
+                }
+                else
+                {
+                    // 当前有能量墙 → 只显示能量墙，不再显示 Idle 掌心特效
+                    spellColor += RenderEnergyWall(uv);
+                }
 
-                // 限制 alpha 在 [0,1]
                 spellColor.a = saturate(spellColor.a);
                 return spellColor;
             }
+
             ENDCG
         }
     }

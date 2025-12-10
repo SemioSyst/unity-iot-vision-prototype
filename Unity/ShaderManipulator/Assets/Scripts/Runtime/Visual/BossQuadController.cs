@@ -21,6 +21,8 @@ public sealed class BossQuadController : MonoBehaviour
     [SerializeField] private string enemyHealthMaxProperty = "_EnemyHealthMax";
     [SerializeField] private string enemyAttackCharge01Property = "_EnemyAttackCharge01";
     [SerializeField] private string enemyAttackHitPulseProperty = "_EnemyAttackHitPulse01";
+    // NEW: 被光炮命中的脉冲
+    [SerializeField] private string enemyHitByBeamPulseProperty = "_EnemyHitByBeamPulse01";
 
     private Material _material;
 
@@ -31,6 +33,7 @@ public sealed class BossQuadController : MonoBehaviour
     private int _enemyHealthMaxID;
     private int _enemyAttackCharge01ID;
     private int _enemyAttackHitPulseID;
+    private int _enemyHitByBeamPulseID;
 
     private void Awake()
     {
@@ -63,6 +66,7 @@ public sealed class BossQuadController : MonoBehaviour
         _enemyHealthMaxID = Shader.PropertyToID(enemyHealthMaxProperty);
         _enemyAttackCharge01ID = Shader.PropertyToID(enemyAttackCharge01Property);
         _enemyAttackHitPulseID = Shader.PropertyToID(enemyAttackHitPulseProperty);
+        _enemyHitByBeamPulseID = Shader.PropertyToID(enemyHitByBeamPulseProperty);
     }
 
     /// <summary>
@@ -89,5 +93,8 @@ public sealed class BossQuadController : MonoBehaviour
         // 攻击相关
         _material.SetFloat(_enemyAttackCharge01ID, state.EnemyAttackCharge01);
         _material.SetFloat(_enemyAttackHitPulseID, state.EnemyAttackHitPulse01);
+
+        // NEW: 被光炮命中脉冲
+        _material.SetFloat(_enemyHitByBeamPulseID, state.EnemyHitByBeamPulse01);
     }
 }

@@ -30,6 +30,9 @@ namespace ShaderDuel.Gameplay
 
         // 新增：这次命中的伤害量（方便 CombatManager 读取）
         public float AttackDamage { get; set; }
+
+        // 新增：这一帧是否被光炮击中（供视觉层做受击闪烁等用）
+        public bool HitByBeamThisFrame { get; set; }
     }
 
 }

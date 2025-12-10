@@ -20,6 +20,12 @@ namespace ShaderDuel.Visual
         // 命中脉冲从 1 衰减到 0 的时间（秒）
         private const float HitPulseDuration = 0.3f;
 
+        // 记录每个敌人被光炮命中的脉冲值（0~1），用于 EnemyHitByBeamPulse01
+        private readonly Dictionary<int, float> _beamHitPulseByEnemyId = new Dictionary<int, float>();
+
+        // 被光炮命中脉冲从 1 衰减到 0 的时间（秒）
+        private const float BeamHitPulseDuration = 0.25f;
+
         public void UpdateVisuals(in VisualFrameInput input, ref VisualFrameState state)
         {
             var context = input.Combat;
@@ -81,6 +87,9 @@ namespace ShaderDuel.Visual
             // 2.4 命中脉冲（命中的那一帧置为 1，然后在后续帧按时间衰减）
             float hitPulse01 = UpdateHitPulse(enemyId, dummyBoss.AttackHitThisFrame, input.DeltaTime);
 
+            // 2.5 被光炮命中脉冲（光炮扫到 Dummy）
+            float hitByBeamPulse01 = UpdateBeamHitPulse(enemyId, dummyBoss.HitByBeamThisFrame, input.DeltaTime);
+
             // 3. 写入 BossLayerState
             state.Boss.EnemyId = enemyId;
             state.Boss.EnemyPhase = phase;
@@ -89,6 +98,7 @@ namespace ShaderDuel.Visual
             state.Boss.EnemyHealthMax = maxHealth;
             state.Boss.EnemyAttackCharge01 = attackCharge01;
             state.Boss.EnemyAttackHitPulse01 = hitPulse01;
+            state.Boss.EnemyHitByBeamPulse01 = hitByBeamPulse01;
         }
 
         /// <summary>
@@ -135,6 +145,33 @@ namespace ShaderDuel.Visual
             }
 
             _hitPulseByEnemyId[enemyId] = pulse;
+            return pulse;
+        }
+
+        /// <summary>
+        /// 根据 HitByBeamThisFrame 和 deltaTime 更新“被光炮命中脉冲”值（0~1）。
+        /// 命中当帧设为 1，之后按固定时长线性衰减到 0。
+        /// </summary>
+        private float UpdateBeamHitPulse(int enemyId, bool hitByBeamThisFrame, float deltaTime)
+        {
+            if (!_beamHitPulseByEnemyId.TryGetValue(enemyId, out float pulse))
+            {
+                pulse = 0f;
+            }
+
+            if (hitByBeamThisFrame)
+            {
+                // 命中当帧：直接打满
+                pulse = 1f;
+            }
+            else if (pulse > 0f && BeamHitPulseDuration > 0f)
+            {
+                // 非命中帧：按照持续时间线性衰减
+                float decayPerSecond = 1f / BeamHitPulseDuration;
+                pulse = Mathf.Max(0f, pulse - decayPerSecond * deltaTime);
+            }
+
+            _beamHitPulseByEnemyId[enemyId] = pulse;
             return pulse;
         }
     }

@@ -39,6 +39,9 @@ namespace ShaderDuel.Gameplay
 
         public override void Tick(float deltaTime)
         {
+            // 每帧开头先清掉“被光炮击中”标记，保持 per-frame 语义
+            _status.HitByBeamThisFrame = false;
+
             if (!_status.IsAlive && _status.Phase != EnemyPhase.Dying &&
                 _status.Phase != EnemyPhase.Inactive)
             {

@@ -49,6 +49,8 @@ public sealed class VisualOrchestrator : MonoBehaviour
         // _visualSystems.Add(new SpellVisualSystem());
         _visualSystems.Add(new HandPalmMarkerSystem());
         _visualSystems.Add(new EnemyBossVisualSystem());
+        _visualSystems.Add(new SpellShieldVisualSystem());
+        _visualSystems.Add(new SpellBeamVisualSystem());
     }
 
     private void Update()

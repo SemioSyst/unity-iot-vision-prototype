@@ -1022,6 +1022,14 @@ MonoBehaviour:
   rightPalmPosProperty: _RightPalmPos
   leftPalmVisibleProperty: _LeftPalmVisible
   rightPalmVisibleProperty: _RightPalmVisible
+  hasEnergyWallProperty: _HasEnergyWall
+  wallCenterUVProperty: _WallCenterUV
+  wallSizeUVProperty: _WallSizeUV
+  wallActivationProperty: _WallActivation01
+  wallPhaseProperty: _WallPhase
+  wallPhaseProgressProperty: _WallPhaseProgress01
+  shieldBoostByBossAttackProperty: _ShieldBoostByBossAttack01
+  guardedProperty: _Guarded
 --- !u!1 &1498136996
 GameObject:
   m_ObjectHideFlags: 0

@@ -64,6 +64,9 @@ namespace ShaderDuel.Visual
         /// 可以由 VisualSystem 做一个短暂衰减的 pulse。
         /// </summary>
         public float EnemyAttackHitPulse01;
+
+        // NEW: 敌人被光炮命中的脉冲（0~1）
+        public float EnemyHitByBeamPulse01;
     }
 
     // TODO: Spell 层之后根据 ISpellRuntimeStatus 来设计
@@ -89,7 +92,59 @@ namespace ShaderDuel.Visual
         /// </summary>
         public float RightPalmVisible01;
 
-        // 以后你再往这里加其它 spell 相关的字段（比如是否在施法状态、护盾、弹幕等等）
+        // —— 能量墙几何与激活度 —— 
+        /// <summary>是否当前帧有能量墙存在（Activation01 > 0）。</summary>
+        public bool HasEnergyWall;
+
+        /// <summary>墙中心屏幕空间坐标（0-1）。</summary>
+        public Vector2 WallCenterUV;
+
+        /// <summary>墙尺寸（宽高，0-1）。</summary>
+        public Vector2 WallSizeUV;
+
+        /// <summary>墙的基础可见度/强度，对应 EnergyWallRuntimeStatus.Activation01。</summary>
+        public float WallActivation01;
+
+        /// <summary>墙当前所处阶段（Armed / Channeling / Recovery）。</summary>
+        public WallShieldPhase WallPhase;
+
+        /// <summary>墙当前阶段内部的 0-1 进度，对应 EnergyWallRuntimeStatus.PhaseProgress01。</summary>
+        public float WallPhaseProgress01;
+
+        // —— 光炮（Charge Beam）——
+        /// <summary>当前是否存在光炮（runtimeStatus 存在且 Activation01 > 0）。</summary>
+        public bool HasChargeBeam;
+
+        /// <summary>光炮起点 UV（0-1）。</summary>
+        public Vector2 BeamOriginUV;
+
+        /// <summary>光炮尺寸 UV（x = 宽度，y = 长度）。</summary>
+        public Vector2 BeamSizeUV;
+
+        /// <summary>光炮当前整体可见度 / 强度（0-1）。</summary>
+        public float BeamActivation01;
+
+        /// <summary>光炮当前阶段（Armed / Firing / Recovery）。</summary>
+        public ChargeBeamPhase BeamPhase;
+
+        /// <summary>当前阶段内部进度（0-1）。</summary>
+        public float BeamPhaseProgress01;
+
+        /// <summary>蓄力进度（0-1），对应 ChargingProgress01。</summary>
+        public float BeamChargingProgress01;
+
+        // —— Boss 攻击与防御交互 —— 
+        /// <summary>
+        /// Boss 处于 Attack 阶段且玩家有能量墙时的“加亮因子”0-1，
+        /// 由 VisualSystem 做平滑脉冲。
+        /// </summary>
+        public float ShieldBoostByBossAttack01;
+
+        /// <summary>
+        /// 玩家当前是否处于“Guarding”状态（Combat.Player.Status.IsGuarding）。
+        /// 方便 Shader 区分“真的挡住了” vs “只是视觉上有墙”。
+        /// </summary>
+        public bool Guarded;
     }
 
     // TODO: Overlay 层将来做 HUD/屏幕特效再补

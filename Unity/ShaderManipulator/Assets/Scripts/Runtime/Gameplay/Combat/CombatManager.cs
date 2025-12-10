@@ -55,22 +55,26 @@ namespace ShaderDuel.Gameplay
         /// </summary>
         public void Tick(float deltaTime)
         {
-            // 1. 时间相关状态更新：玩家 / 敌人自己的计时逻辑
+            // 1. 玩家 / 敌人自己的时间演化
             _player.Tick(deltaTime);
             foreach (var enemy in _enemies)
             {
                 enemy.Tick(deltaTime);
             }
 
-            // 2. 从 SpellOrchestrator 读取当前运行中的法术
+            // 2. 读取当前运行中的法术
             var runningSpells = _spellOrchestrator.RunningSpells;
 
-            // 3. 解释法术的战斗效果（目前先只实现“能量墙护盾”）
-            ResolveSpellEffectsForPlayer(runningSpells); // 先更新玩家是否有护盾
-            // 4. 结算敌人攻击对玩家的伤害
-            ResolveEnemyAttacks();                       // 再根据护盾状态结算伤害
+            // 3. 先解释法术对玩家的防御效果（能量墙护盾等）
+            ResolveSpellEffectsForPlayer(runningSpells);
 
-            // 5. 刷新 Context，供渲染 / UI / 调试使用
+            // 4. 再结算法术对敌人的伤害（比如蓄力光炮 DOT）
+            ResolveSpellDamageToEnemies(runningSpells, deltaTime);
+
+            // 5. 最后结算敌人攻击对玩家的伤害
+            ResolveEnemyAttacks();
+
+            // 6. 刷新 Context 供渲染 / UI 使用
             RefreshContext(runningSpells);
         }
 
@@ -106,6 +110,64 @@ namespace ShaderDuel.Gameplay
             // 把结果写回玩家战斗控制器
             _player.SetGuarding(hasGuard);
             _player.SetGuardStrength01(hasGuard ? maxGuardStrength01 : 0f);
+        }
+
+        #endregion
+
+        #region 法术效果 → 敌人伤害
+
+        /// <summary>
+        /// 结算当前所有法术对敌人的伤害。
+        /// 目前只实现：蓄力光炮在 Firing 阶段对所有敌人造成小额 DOT。
+        /// </summary>
+        private void ResolveSpellDamageToEnemies(
+            IReadOnlyList<RunningSpell> runningSpells,
+            float deltaTime)
+        {
+            if (_enemies.Count == 0)
+                return;
+
+            // 基础 DPS：光炮在最低蓄力时的每秒伤害
+            const float MinDps = 5f;
+            // 完全蓄满时的每秒伤害上限
+            const float MaxDps = 18f;
+
+            foreach (var spell in runningSpells)
+            {
+                var status = spell.RuntimeStatus;
+
+                // 只关心蓄力光炮
+                if (status is ChargeBeamRuntimeStatus beamStatus)
+                {
+                    // 只有在 Firing 阶段且“可见度”> 0 时才造成伤害
+                    if (beamStatus.Phase != ChargeBeamPhase.Firing ||
+                        beamStatus.Activation01 <= 0f)
+                    {
+                        continue;
+                    }
+
+                    // 根据蓄力程度在 [MinDps, MaxDps] 之间插值
+                    float dps = Mathf.Lerp(MinDps, MaxDps, beamStatus.ChargingProgress01);
+
+                    // 本帧伤害 = 每秒伤害 * deltaTime
+                    float damageThisFrame = dps * deltaTime;
+                    if (damageThisFrame <= 0f)
+                        continue;
+
+                    // 对场上所有敌人施加伤害
+                    foreach (var enemy in _enemies)
+                    {
+                        // 敌人内部自己判断死活 / 无效状态
+                        enemy.ApplyHit(damageThisFrame);
+
+                        // 如果是 Dummy 敌人，打一个“本帧被光炮击中”的标记
+                        if (enemy.Status is DummyEnemyRuntimeStatus dummyStatus)
+                        {
+                            dummyStatus.HitByBeamThisFrame = true;
+                        }
+                    }
+                }
+            }
         }
 
         #endregion

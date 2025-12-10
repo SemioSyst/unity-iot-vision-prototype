@@ -32,6 +32,19 @@ Shader "ShaderDuel/SpellQuad"
 
         _ShieldBoostByBossAttack01  ("Shield Boost By Boss Attack", Range(0,1)) = 0
         _Guarded                    ("Guarded", Range(0,1)) = 0
+
+        // Charge Beam Tuning
+        _BeamCoreRadius      ("Beam Core Radius", Range(0.01, 0.2)) = 0.08
+        _BeamCoreEdge        ("Beam Core Edge", Range(0.5, 8.0))    = 3.0
+        _BeamWidthMin        ("Beam Min Width", Range(0.01, 0.3))   = 0.05
+        _BeamWidthMax        ("Beam Max Width", Range(0.05, 0.6))   = 0.25
+        _BeamPixelDensity    ("Beam Pixel Density", Range(40, 400)) = 160
+        _BeamFlashStrength   ("Beam Flash Strength", Range(0, 3))   = 1.8
+        _BeamDissolveScale   ("Beam Dissolve Scale", Range(40, 400))= 120
+
+        _BeamCoreColor       ("Beam Core Color", Color) = (0.6, 0.8, 1.3, 1)
+        _BeamEdgeColor       ("Beam Edge Color", Color) = (0.2, 0.5, 1.0, 1)
+        _BeamFlashColor      ("Beam Flash Color", Color) = (1.5, 1.8, 2.5, 1)
     }
 
     SubShader
@@ -62,6 +75,10 @@ Shader "ShaderDuel/SpellQuad"
             #define WALLPHASE_ARMED      0.0
             #define WALLPHASE_CHANNELING 1.0
             #define WALLPHASE_FADE       2.0
+
+            #define BEAMPHASE_ARMED      0.0
+            #define BEAMPHASE_FIRING     1.0
+            #define BEAMPHASE_RECOVERY   2.0
 
             #define PI      3.14159265
             #define TWO_PI  6.28318530
@@ -100,6 +117,26 @@ Shader "ShaderDuel/SpellQuad"
             float  _ShieldBoostByBossAttack01;
             float  _Guarded;
 
+            // ==== Charge Beam ====
+            float  _HasChargeBeam;
+            float4 _BeamOriginUV;          // xy 使用
+            float  _BeamActivation01;      // 0~1, Armed/Firing/Recovery 不同语义
+            float  _BeamPhase;             // 0=Armed,1=Firing,2=Recovery（下面宏）
+            float  _BeamPhaseProgress01;   // 本阶段进度 0~1
+            float  _BeamChargingProgress01;// Armed 中累积, Firing/Recovery 冻结
+
+            float  _BeamCoreRadius;
+            float  _BeamCoreEdge;
+            float  _BeamWidthMin;
+            float  _BeamWidthMax;
+            float  _BeamPixelDensity;
+            float  _BeamFlashStrength;
+            float  _BeamDissolveScale;
+
+            float4 _BeamCoreColor;
+            float4 _BeamEdgeColor;
+            float4 _BeamFlashColor;
+
             // 2D hash，用于 glitch / 像素闪烁
             float hash21(float2 p)
             {
@@ -126,6 +163,251 @@ Shader "ShaderDuel/SpellQuad"
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.uv  = v.uv;
                 return o;
+            }
+
+            // 蓄力球旋转函数
+            float2 RotateAround(float2 p, float2 center, float angleRad)
+            {
+                float2 d = p - center;
+                float c = cos(angleRad);
+                float s = sin(angleRad);
+                float2 r = float2(c * d.x - s * d.y,
+                                  s * d.x + c * d.y);
+                return center + r;
+            }
+
+            // Armed 阶段：屏幕中央的像素化旋转光炮
+            float4 RenderBeamArmed(float2 uv)
+            {
+                // 没有光炮就不画
+                if (_HasChargeBeam < 0.5)
+                    return float4(0,0,0,0);
+
+                float2 origin = _BeamOriginUV.xy;
+
+                // 像素化
+                float2 pixUV = floor(uv * _BeamPixelDensity) / _BeamPixelDensity;
+
+                // 动态旋转形成球形漩涡
+                float t = _Time.y;
+                float charge = saturate(_BeamChargingProgress01);
+                float baseAngle = t * (1.0 + charge * 2.0);   // 蓄得越多转得越快
+                float radial = length(pixUV - origin);
+                float swirlAngle = baseAngle + radial * (3.0 + charge * 5.0);
+
+                float2 swirlUV = RotateAround(pixUV, origin, swirlAngle);
+
+                // 计算离中心的距离
+                float aspect = _ScreenParams.x / _ScreenParams.y;
+                float2 d = float2((swirlUV.x - origin.x) * aspect,
+                                  (swirlUV.y - origin.y));
+                float r = length(d) + 1e-6;
+
+                float coreR = _BeamCoreRadius * (0.6 + 0.6 * charge); // 蓄得越多越大
+                float coreMask = saturate(1.0 - r / coreR);
+                coreMask = pow(coreMask, _BeamCoreEdge);
+
+                // 外圈 pixel fire：用 hash 和时间抖动
+                float2 cell = floor(swirlUV * (_BeamPixelDensity * 0.7));
+                float n = hash21(cell + t * 1.3);
+                float fireMask = smoothstep(0.5, 1.0, n) * coreMask;
+
+                // 颜色：中心偏白蓝，外圈偏深蓝
+                float3 coreCol = _BeamCoreColor.rgb;
+                float3 edgeCol = _BeamEdgeColor.rgb;
+
+                float3 col = lerp(edgeCol, coreCol, coreMask * (0.6 + 0.4 * charge));
+                col += edgeCol * fireMask * (0.4 + 0.6 * charge); // 周围像素火焰
+
+                // 亮度随 Charging & Activation 提升
+                float act = saturate(_BeamActivation01); // Armed 中 = Charging
+                float intensity = (0.4 + 0.6 * charge) * (0.3 + 0.7 * act);
+
+                float alpha = coreMask * intensity;
+
+                return float4(col * intensity * _GlobalIntensity, alpha);
+            }
+
+            // Firing 阶段：发射中的激光光柱
+            // 光柱几何信息
+            struct BeamGeom
+            {
+                float mask;   // 在光柱内的强度 0~1
+                float t;      // 在光柱路径上的 0~1，0=Origin,1=Center
+                float side;   // 垂直偏移（用于边缘判定）
+            };
+
+            // 计算 origin -> center 的光柱几何
+            BeamGeom ComputeBeamGeom(float2 uv, float2 origin, float2 center, float width)
+            {
+                BeamGeom g;
+                g.mask = 0.0;
+                g.t = 0.0;
+                g.side = 0.0;
+
+                float2 dir = center - origin;
+                float len = max(length(dir), 1e-5);
+                float2 dirN = dir / len;
+
+                float2 rel = uv - origin;
+                float t = dot(rel, dirN) / len;             // 在路径上的投影 0..1
+                float2 perpDir = float2(-dirN.y, dirN.x);
+                float side = dot(rel, perpDir);             // 垂直偏移
+
+                // 只考虑 0~1 范围内的主路径
+                float onPath = step(0.0, t) * step(t, 1.0);
+
+                float halfW = width * 0.5;
+                float sideMask = 1.0 - smoothstep(halfW, halfW + halfW * 0.6, abs(side));
+
+                float mask = onPath * sideMask;
+
+                g.mask = mask;
+                g.t = saturate(t);
+                g.side = side;
+                return g;
+            }
+
+            float4 RenderBeamFiring(float2 uv)
+            {
+                if (_HasChargeBeam < 0.5)
+                    return float4(0,0,0,0);
+
+                float phase = round(_BeamPhase);
+                if (abs(phase - BEAMPHASE_FIRING) >= 0.5)
+                    return float4(0,0,0,0);
+
+                float charge = saturate(_BeamChargingProgress01);
+                float act    = saturate(_BeamActivation01); // Firing 中恒为 1，考虑未来扩展时仍保留
+
+                float2 origin = _BeamOriginUV.xy;
+                float2 center = float2(0.5, 0.5);
+
+                // 光束宽度由蓄力驱动，不用 BeamSizeUV
+                float width = lerp(_BeamWidthMin, _BeamWidthMax, charge);
+
+                BeamGeom geom = ComputeBeamGeom(uv, origin, center, width);
+                if (geom.mask <= 0.001)
+                    return float4(0,0,0,0);
+
+                float2 pixUV = floor(uv * _BeamPixelDensity) / _BeamPixelDensity;
+                float t = _Time.y;
+
+                // ------- 1. 主光束亮度 --------
+                float coreFactor = pow(geom.mask, 0.7);
+                float edgeFactor = 1.0 - geom.mask;
+
+                float3 baseCol = lerp(_BeamEdgeColor.rgb, _BeamCoreColor.rgb, coreFactor);
+
+                // ------- 2. 像素碎片沿光束前进（沿 t 方向） -------
+
+                // 利用 geom.t + 时间，制造向中心前进的条纹/块
+                float travel = geom.t * 12.0 - t * (6.0 + 8.0 * charge);
+                float band   = sin(travel);
+                float bandMask = smoothstep(0.6, 1.0, band);
+
+                // 再加一点随机碎片
+                float2 cell = floor(pixUV * 80.0);
+                float rnd   = hash21(cell + t * 1.3);
+
+                float fragmentMask = bandMask * smoothstep(0.6, 1.0, rnd);
+
+                // ------- 3. 边缘 pixel bloom（光柱边缘闪烁） -------
+
+                float sideNorm = abs(geom.side) / (width * 0.5 + 1e-6);
+                float bloomMask = smoothstep(0.4, 0.9, 1.0 - sideNorm); // 接近边缘更强
+
+                float flicker = 0.7 + 0.3 * sin(t * 20.0 + geom.t * 40.0 + rnd * 10.0);
+
+                // ------- 4. 起手 flash（Firing 一开始更亮、略微膨胀） -------
+
+                float phaseProg = saturate(_BeamPhaseProgress01); // 0 at start
+                float flash = exp(-phaseProg * 6.0) * _BeamFlashStrength; // 越靠近 0 越大
+
+                float3 col = baseCol;
+
+                // 主体亮度
+                float mainIntensity = 0.8 + 0.8 * charge;
+                col *= mainIntensity;
+
+                // 叠加碎片闪光
+                col += _BeamCoreColor.rgb * fragmentMask * (0.6 + 0.8 * charge);
+
+                // 边缘 bloom
+                col += _BeamEdgeColor.rgb * bloomMask * flicker * 0.7;
+
+                // 起手 flash：用单独颜色提一遍高光
+                col = lerp(col, _BeamFlashColor.rgb, saturate(flash));
+
+                float alpha = geom.mask * (0.5 + 0.5 * charge) * act;
+
+                return float4(col * _GlobalIntensity, alpha);
+            }
+
+            // Recovery 阶段：收回时的像素溶解效果
+            float4 RenderBeamRecovery(float2 uv)
+            {
+                if (_HasChargeBeam < 0.5)
+                    return float4(0,0,0,0);
+
+                float phase = round(_BeamPhase);
+                if (abs(phase - BEAMPHASE_RECOVERY) >= 0.5)
+                    return float4(0,0,0,0);
+
+                float act = saturate(_BeamActivation01);          // Recovery 中 1→0
+                if (act <= 0.001)
+                    return float4(0,0,0,0);
+
+                float2 origin = _BeamOriginUV.xy;
+                float2 center = float2(0.5, 0.5);
+
+                float charge = saturate(_BeamChargingProgress01);
+
+                // 随着 act 衰减光束变细
+                float width = lerp(_BeamWidthMin * 0.5, _BeamWidthMax, charge);
+                width *= (0.4 + 0.6 * act);  // act 越小越细
+
+                BeamGeom geom = ComputeBeamGeom(uv, origin, center, width);
+                if (geom.mask <= 0.001)
+                    return float4(0,0,0,0);
+
+                float2 pixUV = floor(uv * _BeamPixelDensity) / _BeamPixelDensity;
+
+                // 像素级 dissolve：act 越小，越多像素消失
+                float2 cell = floor(pixUV * _BeamDissolveScale);
+                float rnd   = hash21(cell);
+
+                float threshold = 1.0 - act;      // act=1 → threshold=0（不消），act=0→1（全消）
+                if (rnd < threshold)
+                    return float4(0,0,0,0);
+
+                // 剩余像素的颜色逐渐变暗
+                float3 col = lerp(_BeamEdgeColor.rgb, _BeamCoreColor.rgb, geom.mask);
+                col *= (0.3 + 0.7 * act);
+
+                float alpha = geom.mask * act * 0.8;
+
+                return float4(col * _GlobalIntensity, alpha);
+            }
+
+            // 渲染激光光束总调度
+            float4 RenderChargeBeam(float2 uv)
+            {
+                if (_HasChargeBeam < 0.5)
+                    return float4(0,0,0,0);
+
+                float phase = round(_BeamPhase);
+
+                if (abs(phase - BEAMPHASE_ARMED) < 0.5)
+                    return RenderBeamArmed(uv);
+
+                if (abs(phase - BEAMPHASE_FIRING) < 0.5)
+                    return RenderBeamFiring(uv);
+
+                if (abs(phase - BEAMPHASE_RECOVERY) < 0.5)
+                    return RenderBeamRecovery(uv);
+
+                return float4(0,0,0,0);
             }
 
             // Armed 阶段：掌心的蓝色像素能量球
@@ -364,22 +646,26 @@ Shader "ShaderDuel/SpellQuad"
             {
                 float2 uv = i.uv;
 
-                float4 spellColor = float4(0,0,0,0);
-
-                bool hasWall = (_HasEnergyWall > 0.5);
-
-                // 如果当前没有任何激活的法术 → 显示 Idle 掌心特效
-                if (!hasWall)
+                // 1. 光炮优先
+                if (_HasChargeBeam > 0.5)
                 {
-                    spellColor += RenderPalm(uv, _LeftPalmPos.xy,  _LeftPalmVisible);
-                    spellColor += RenderPalm(uv, _RightPalmPos.xy, _RightPalmVisible);
-                }
-                else
-                {
-                    // 当前有能量墙 → 只显示能量墙，不再显示 Idle 掌心特效
-                    spellColor += RenderEnergyWall(uv);
+                    float4 beamCol = RenderChargeBeam(uv);
+                    beamCol.a = saturate(beamCol.a);
+                    return beamCol;
                 }
 
+                // 2. 其次是能量墙
+                if (_HasEnergyWall > 0.5)
+                {
+                    float4 wallCol = RenderEnergyWall(uv);
+                    wallCol.a = saturate(wallCol.a);
+                    return wallCol;
+                }
+
+                // 3. 没有法术时才画 idle 掌心特效
+                float4 spellColor = 0;
+                spellColor += RenderPalm(uv, _LeftPalmPos.xy,  _LeftPalmVisible);
+                spellColor += RenderPalm(uv, _RightPalmPos.xy, _RightPalmVisible);
                 spellColor.a = saturate(spellColor.a);
                 return spellColor;
             }

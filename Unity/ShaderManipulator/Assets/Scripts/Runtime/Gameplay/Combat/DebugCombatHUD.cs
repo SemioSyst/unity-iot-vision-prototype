@@ -51,7 +51,7 @@ namespace ShaderDuel.Gameplay
             var ctx = _driver.Context;
 
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("=== COMBAT DEBUG ===");
+            sb.AppendLine("=== COMBAT UI ===");
 
             // Íæ¼ÒÑªÁ¿
             var player = ctx.Player;

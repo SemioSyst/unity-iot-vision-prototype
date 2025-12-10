@@ -179,7 +179,6 @@ Shader "ShaderDuel/SpellQuad"
             // Armed 阶段：屏幕中央的像素化旋转光炮
             float4 RenderBeamArmed(float2 uv)
             {
-                // 没有光炮就不画
                 if (_HasChargeBeam < 0.5)
                     return float4(0,0,0,0);
 
@@ -188,42 +187,73 @@ Shader "ShaderDuel/SpellQuad"
                 // 像素化
                 float2 pixUV = floor(uv * _BeamPixelDensity) / _BeamPixelDensity;
 
-                // 动态旋转形成球形漩涡
                 float t = _Time.y;
                 float charge = saturate(_BeamChargingProgress01);
-                float baseAngle = t * (1.0 + charge * 2.0);   // 蓄得越多转得越快
-                float radial = length(pixUV - origin);
-                float swirlAngle = baseAngle + radial * (3.0 + charge * 5.0);
+                float act    = saturate(_BeamActivation01);   // Armed 中 ~= charge
 
-                float2 swirlUV = RotateAround(pixUV, origin, swirlAngle);
-
-                // 计算离中心的距离
+                // -------------------------
+                // 1. 旋转坐标做“球形漩涡”
+                // -------------------------
                 float aspect = _ScreenParams.x / _ScreenParams.y;
-                float2 d = float2((swirlUV.x - origin.x) * aspect,
-                                  (swirlUV.y - origin.y));
-                float r = length(d) + 1e-6;
 
-                float coreR = _BeamCoreRadius * (0.6 + 0.6 * charge); // 蓄得越多越大
-                float coreMask = saturate(1.0 - r / coreR);
-                coreMask = pow(coreMask, _BeamCoreEdge);
+                float2 toPix = float2((pixUV.x - origin.x) * aspect,
+                                      (pixUV.y - origin.y));
 
-                // 外圈 pixel fire：用 hash 和时间抖动
-                float2 cell = floor(swirlUV * (_BeamPixelDensity * 0.7));
-                float n = hash21(cell + t * 1.3);
-                float fireMask = smoothstep(0.5, 1.0, n) * coreMask;
+                // 基础半径：蓄得越多越大
+                float coreR = lerp(0.10, 0.22, charge);      // 整体比之前大一倍多
 
-                // 颜色：中心偏白蓝，外圈偏深蓝
-                float3 coreCol = _BeamCoreColor.rgb;
-                float3 edgeCol = _BeamEdgeColor.rgb;
+                // 角速度也随蓄力提升
+                float baseAngle = t * (1.0 + 2.5 * charge);
+                float radial    = length(toPix);
+                float swirlAngle = baseAngle + radial * (3.0 + 4.0 * charge);
 
-                float3 col = lerp(edgeCol, coreCol, coreMask * (0.6 + 0.4 * charge));
-                col += edgeCol * fireMask * (0.4 + 0.6 * charge); // 周围像素火焰
+                float c = cos(swirlAngle);
+                float s = sin(swirlAngle);
+                float2 swirlDir = float2(
+                    c * toPix.x - s * toPix.y,
+                    s * toPix.x + c * toPix.y
+                );
 
-                // 亮度随 Charging & Activation 提升
-                float act = saturate(_BeamActivation01); // Armed 中 = Charging
-                float intensity = (0.4 + 0.6 * charge) * (0.3 + 0.7 * act);
+                float r = length(swirlDir) + 1e-6;
 
-                float alpha = coreMask * intensity;
+                // -------------------------
+                // 2. 核心 + 光晕 两层 mask
+                // -------------------------
+                float rNorm = r / coreR;
+
+                // 核心：比较硬一点，但不要 pow 得太狠
+                float coreMask = smoothstep(1.0, 0.0, rNorm);          // rNorm 0→1 对应 1→0
+
+                // 光晕：范围更大，衰减更软
+                float haloMask = smoothstep(1.5, 0.0, rNorm);          // 半径 ~1.5 倍 core
+
+                // -------------------------
+                // 3. 像素火焰：挂在光晕外层
+                // -------------------------
+                float2 fireCell = floor(pixUV * (_BeamPixelDensity * 0.7));
+                float n = hash21(fireCell + t * 1.3);
+
+                // 只点亮一部分像素当作“火星”
+                float fireMask = haloMask * smoothstep(0.65, 1.0, n);
+
+                // -------------------------
+                // 4. 颜色：中心偏白，外圈偏深蓝
+                // -------------------------
+                float3 coreCol = _BeamCoreColor.rgb;                  // 蓝白
+                float3 edgeCol = _BeamEdgeColor.rgb;                  // 深蓝
+
+                float3 col = float3(0,0,0);
+
+                // 核心颜色
+                col += lerp(edgeCol, coreCol, coreMask);
+
+                // 外圈像素火焰，带一点 charge 放大
+                col += edgeCol * fireMask * (0.4 + 0.6 * charge);
+
+                // 整体亮度：蓄力越多越亮
+                float intensity = (0.4 + 0.8 * charge) * (0.3 + 0.7 * act);
+
+                float alpha = (coreMask * 0.8 + haloMask * 0.4) * intensity;
 
                 return float4(col * intensity * _GlobalIntensity, alpha);
             }

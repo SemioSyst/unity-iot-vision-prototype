@@ -170,7 +170,7 @@ Material:
     - _CoreDarkColor: {r: 0.080068, g: 0.013765263, b: 0.1509434, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _EyeColor: {r: 0.90764993, g: 0.8039216, b: 0.94509804, a: 1}
-    - _FlameColor: {r: 0.8832155, g: 0.73276365, b: 0.9433962, a: 1}
+    - _FlameColor: {r: 0.98229676, g: 0.9402515, b: 1, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _TrailColor: {r: 0.8, g: 0.5, b: 1, a: 1}
   m_BuildTextureStacks: []

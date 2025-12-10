@@ -102,6 +102,13 @@ Material:
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
     - _AlphaToMask: 0
+    - _BeamCoreEdge: 1.31
+    - _BeamCoreRadius: 0.2
+    - _BeamDissolveScale: 120
+    - _BeamFlashStrength: 1.8
+    - _BeamPixelDensity: 160
+    - _BeamWidthMax: 0.25
+    - _BeamWidthMin: 0.05
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
     - _BumpScale: 1
@@ -123,12 +130,15 @@ Material:
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
+    - _Guarded: 0
+    - _HasEnergyWall: 0
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.005
     - _PixelDensity: 204
     - _QueueOffset: 0
     - _ReceiveShadows: 1
+    - _ShieldBoostByBossAttack01: 0
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
@@ -138,14 +148,20 @@ Material:
     - _TrailLength: 0.18
     - _TrailSoftness: 2
     - _TrailWidth: 0.04
+    - _WallPhase: 0
     - _WorkflowMode: 1
     - _ZWrite: 0
     m_Colors:
     - _BaseColor: {r: 0.13941285, g: 0.24070498, b: 0.836478, a: 0}
+    - _BeamCoreColor: {r: 0.6, g: 0.8, b: 1.3, a: 1}
+    - _BeamEdgeColor: {r: 0.19999996, g: 0.5, b: 1, a: 1}
+    - _BeamFlashColor: {r: 1.5, g: 1.8, b: 2.5000002, a: 1}
     - _Color: {r: 0.13941282, g: 0.24070495, b: 0.836478, a: 0}
     - _CoreColor: {r: 0.9, g: 0.7, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _TrailColor: {r: 0.8, g: 0.5, b: 1, a: 1}
+    - _WallCenterUV: {r: 0.5, g: 0.5, b: 0, a: 0}
+    - _WallSizeUV: {r: 0.4, g: 0.4, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

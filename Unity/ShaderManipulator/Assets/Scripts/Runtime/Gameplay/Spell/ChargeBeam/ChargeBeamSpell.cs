@@ -326,7 +326,7 @@ namespace ShaderDuel.Gameplay
             Vector3 center = handFeatures.TwoHandCenter;
             Vector2 uv = new Vector2(
                 Mathf.Clamp01(center.x),
-                Mathf.Clamp01(center.y));
+                Mathf.Clamp01(1.0f - center.y));
             _status.BeamOriginUV = uv;
 
             // 宽度主要由蓄力程度决定，长度占满屏幕

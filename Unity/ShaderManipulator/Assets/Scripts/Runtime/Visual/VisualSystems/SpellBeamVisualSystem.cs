@@ -74,10 +74,8 @@ namespace ShaderDuel.Visual
             ChargeBeamRuntimeStatus beam,
             ref SpellLayerState spellState)
         {
-            // 是否认为“存在可见光炮”：
-            // 这里简单用 Activation01 > 0 判断，
-            // 这样 Armed / Firing / Recovery 期间只要有能量感就算有光炮。
-            bool hasBeam = beam.Activation01 > 0f;
+            
+            bool hasBeam = true;
 
             spellState.HasChargeBeam = hasBeam;
             spellState.BeamOriginUV = beam.BeamOriginUV;
